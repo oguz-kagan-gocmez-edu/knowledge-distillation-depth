@@ -1,0 +1,35 @@
+name: Experiment
+description: Plan and record one experiment (hypothesis -> command -> result -> conclusion)
+title: "[Exp] "
+labels: ["experiment"]
+body:
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: Hypothesis
+      description: What do we expect, and why?
+      placeholder: "Metric pseudo-labels on unlabeled images lower AbsRel vs E3 at 5% labels."
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: What changes compared to the baseline? Label budget, recipe, student, steps, seeds.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command(s)
+      render: bash
+  - type: textarea
+    id: results
+    attributes:
+      label: Results
+      description: Fill in after the run. Paste the summary table and link results/<run>/report.json (it records the git commit).
+  - type: textarea
+    id: conclusion
+    attributes:
+      label: Conclusion
+      description: Did the hypothesis hold? What next? Failed ideas are worth keeping for the report.
