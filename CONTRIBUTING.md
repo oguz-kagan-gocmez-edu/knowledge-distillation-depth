@@ -12,6 +12,8 @@ How work is done in this repository, so that no result gets lost and every numbe
    uncommitted code and is not reproducible.
 4. Write results into `results/<run_name>/` (use `--out`), and save the console output:
    `python scripts/fewlabel_v2.py ... 2>&1 | tee results/<run_name>/run.log`
+   Long runs go through `notebooks/colab_run.ipynb`; copy its `results/<RUN_NAME>/` folder
+   from Drive into the repo.
 5. Open a pull request that says `Closes #12`, with the result table filled in.
    CI must pass (lint + smoke test).
 6. Merge into `main`. Closed issues and merged PRs together form the experiment log for the report.
@@ -37,5 +39,6 @@ Tag the state of the repository at each deliverable, and make a GitHub Release f
 
 ```bash
 make lint    # ruff
+make test    # unit tests, ~2 min
 make smoke   # every script on tiny synthetic data, CPU, ~2 min
 ```

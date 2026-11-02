@@ -34,7 +34,9 @@ jobs:
       - name: Install CPU-only PyTorch
         run: pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
       - name: Install package
-        run: pip install -e .
+        run: pip install -e . pytest
+      - name: Unit tests
+        run: make test PY=python
       - name: Smoke test
         run: make smoke PY=python
       - name: Upload smoke outputs
