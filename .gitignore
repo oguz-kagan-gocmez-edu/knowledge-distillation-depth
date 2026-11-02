@@ -36,5 +36,8 @@ docs/**/*.log
 .vscode/
 .idea/
 
+# Course material (not ours to publish)
+docs/course/
+
 # Agent files from another project
 .claude/

@@ -27,7 +27,6 @@ notebooks/           colab_run.ipynb: long runs on a Colab GPU, with checkpoints
 tests/               unit tests (resume, cache reuse, label budgets)
 results/             one folder per run: report.json, examples.png, run.log
 docs/proposal/       proposal (LaTeX + PDF)
-docs/course/         course project brief
 data/                NYU data (not in git)
 cache/               cached data + teacher outputs (not in git)
 ```
@@ -66,8 +65,8 @@ same arguments continues where it stopped, and finished runs are skipped.
 ## Long runs on Colab
 
 Open [`notebooks/colab_run.ipynb`](notebooks/colab_run.ipynb) in Colab (File → Open notebook → GitHub),
-follow the one-time setup at the top (upload `nyu_data.zip` to `MyDrive/kd_depth/`, add a read-only
-`GITHUB_TOKEN` secret, pick an L4 GPU), set `RUN_NAME` and `ARGS`, and Run all. Teacher outputs,
+follow the one-time setup at the top (upload `nyu_data.zip` to `MyDrive/kd_depth/`, pick an L4 GPU),
+set `RUN_NAME` and `ARGS`, and Run all. Teacher outputs,
 checkpoints and results are kept on Drive, so after a disconnect Run all simply continues.
 
 | Recipe | ID | Training signal |
@@ -83,7 +82,9 @@ checkpoints and results are kept on Drive, so after a disconnect Run all simply 
 - Test: the standard 654 NYU test images, used only for the final results.
 - Metrics: AbsRel, RMSE, δ<1.25; efficiency: parameters, FLOPs, latency.
 
-## Workflow and citations
+## Workflow, citations and license
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how experiments are tracked with issues, branches
 and pull requests, and [CITATIONS.md](CITATIONS.md) for the models, data and methods used.
+The code is released under the [MIT License](LICENSE). NYU Depth V2 and Depth Anything V2 have their
+own licenses; neither the data nor model weights are included in this repository.
