@@ -1,0 +1,43 @@
+Device: mps | 2 training runs x 2000 steps
+
+[1/3] Data (validation = held-out rooms) and teacher outputs
+  loaded data + teacher outputs from cache densedepth_pool5000_val300_seed0_small.npz
+
+[2/3] Training: labeled [250] of 5000 images, recipes ['gt', 'semi']
+  -- E1 gt, 250 labeled, seed 0
+Downloading: "https://download.pytorch.org/models/efficientnet_b0_rwightman-7f5810bc.pth" to /Users/oguzkagan/.cache/torch/hub/checkpoints/efficientnet_b0_rwightman-7f5810bc.pth
+  0%|          | 0.00/20.5M [00:00<?, ?B/s]  7%|▋         | 1.38M/20.5M [00:00<00:01, 13.3MB/s] 13%|█▎        | 2.75M/20.5M [00:00<00:02, 9.19MB/s] 20%|█▉        | 4.00M/20.5M [00:00<00:01, 10.5MB/s] 26%|██▋       | 5.38M/20.5M [00:00<00:01, 11.6MB/s] 32%|███▏      | 6.62M/20.5M [00:00<00:01, 11.6MB/s] 39%|███▊      | 7.88M/20.5M [00:00<00:01, 9.43MB/s] 45%|████▌     | 9.25M/20.5M [00:00<00:01, 10.4MB/s] 52%|█████▏    | 10.6M/20.5M [00:01<00:00, 11.4MB/s] 58%|█████▊    | 11.9M/20.5M [00:01<00:00, 11.7MB/s] 65%|██████▍   | 13.2M/20.5M [00:01<00:00, 10.1MB/s] 70%|███████   | 14.4M/20.5M [00:01<00:00, 10.5MB/s] 76%|███████▋  | 15.6M/20.5M [00:01<00:00, 11.1MB/s] 84%|████████▎ | 17.1M/20.5M [00:01<00:00, 12.2MB/s] 91%|█████████ | 18.6M/20.5M [00:01<00:00, 12.9MB/s] 98%|█████████▊| 20.0M/20.5M [00:01<00:00, 10.7MB/s]100%|██████████| 20.5M/20.5M [00:01<00:00, 11.0MB/s]
+    ~12 min for this run
+    step   250  gt 0.395  | val AbsRel 0.256  d1 0.575  scale x1.04
+    step   500  gt 0.204  | val AbsRel 0.225  d1 0.602  scale x0.98
+    step   750  gt 0.165  | val AbsRel 0.232  d1 0.625  scale x1.04
+    step  1000  gt 0.151  | val AbsRel 0.218  d1 0.624  scale x0.99
+    step  1250  gt 0.135  | val AbsRel 0.213  d1 0.634  scale x1.00
+    step  1500  gt 0.124  | val AbsRel 0.212  d1 0.634  scale x0.99
+    step  1750  gt 0.120  | val AbsRel 0.221  d1 0.639  scale x1.04
+    step  2000  gt 0.117  | val AbsRel 0.208  d1 0.620  scale x0.95
+  -- E3 semi, 250 labeled, seed 0
+    ~11 min for this run
+    step   250  gt 0.439  teacher 1.028  | val AbsRel 0.362  d1 0.468  scale x1.16
+    step   500  gt 0.267  teacher 0.616  | val AbsRel 0.252  d1 0.580  scale x1.01
+    step   750  gt 0.242  teacher 0.522  | val AbsRel 0.260  d1 0.592  scale x1.07
+    step  1000  gt 0.220  teacher 0.473  | val AbsRel 0.236  d1 0.614  scale x1.05
+    step  1250  gt 0.207  teacher 0.440  | val AbsRel 0.206  d1 0.651  scale x1.00
+    step  1500  gt 0.196  teacher 0.402  | val AbsRel 0.215  d1 0.652  scale x1.05
+    step  1750  gt 0.190  teacher 0.394  | val AbsRel 0.206  d1 0.671  scale x1.02
+    step  2000  gt 0.185  teacher 0.388  | val AbsRel 0.202  d1 0.670  scale x1.01
+
+[3/3] Summary
+------------------------------------------------------------------------------
+FEW-LABEL TEST  (validation: 300 images from held-out rooms, best checkpoint)
+------------------------------------------------------------------------------
+Labeled       Recipe            AbsRel    RMSE  d<1.25     vs gt  scale  best@
+250 (5%)      E1 gt              0.208   0.764   0.620            x0.95   2000
+250 (5%)      E3 semi            0.202   0.740   0.670     -2.9%  x1.01   2000
+------------------------------------------------------------------------------
+Reference     constant depth     0.393   1.346   0.353
+Reference     teacher (opt.)     0.111   0.521   0.878
+------------------------------------------------------------------------------
+250 labeled: mixed: AbsRel -3%, d1 +0.050 (metrics disagree, check the scale column)
+Note: one seed only. Differences below ~3% may be noise; use --seeds 0,1,2 to check.
+Saved: fewlabel_results_base/report.json and fewlabel_results_base/examples.png

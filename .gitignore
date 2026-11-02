@@ -1,0 +1,34 @@
+# Dataset (download separately, see README)
+nyu_data/
+*.zip
+
+# Cached teacher outputs (large, can be rebuilt)
+cache/
+*.npz
+
+# Model weights
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# LaTeX build files
+*.aux
+*.out
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Agent files from another project
+.claude/
