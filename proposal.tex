@@ -1,0 +1,252 @@
+% CS466 Deep Learning - Term Project Proposal
+% Compile with pdfLaTeX (Overleaf default).
+
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=0.9in]{geometry}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{itemsep=1pt, topsep=3pt}
+
+\title{\textbf{Small and Fast Depth Estimation with Few Labels\\by Learning from a Big Model}\\[4pt]
+\large CS466 Deep Learning, Fall 2026 --- Term Project Proposal (Models Track)}
+\author{Oğuz Kağan Göçmez\\
+\small Özyeğin University\\
+\small \texttt{kagan.gocmez@ozu.edu.tr}}
+\date{October 30, 2026}
+
+\begin{document}
+\maketitle
+
+%--------------------------------------------------------------------
+\section{Introduction}
+
+A robot needs to know how far away things are. Without this information,
+it cannot avoid obstacles or plan where to go. Depth sensors such as LiDAR
+can measure distance, but they are expensive. A normal camera is cheap and is
+already on almost every robot, so it would be very useful if a model could
+estimate depth from just one camera image. This task is called
+\emph{monocular depth estimation}~\cite{eigen2014}.
+
+Today there are very strong models for this task, such as Depth Anything
+V2~\cite{yang2024dav2}. However, they are big and slow, so they do not run
+well on small robots or phones. Small models are fast, but they are less
+accurate. There is also a second problem: training a depth model needs real
+depth maps, and collecting them needs a depth sensor and a lot of effort.
+
+In this project, I will train a small model (the \emph{student}) that learns
+from a big model (the \emph{teacher}). This idea is called \emph{knowledge
+distillation}~\cite{hinton2015}. The teacher can label any image for free, so
+the student can also learn from images that have no real depth.
+
+Distillation for depth has been studied before~\cite{wang2021kd}, and
+ZipDepth~\cite{tosi2026zipdepth} recently distilled a foundation model using
+14.1M images and several GPUs. My project looks at the opposite end:
+\textbf{my contribution is a distillation recipe for very small students
+(1--4M parameters) when only a small part of the training images has real
+depth, together with a careful study of when the teacher helps and when it
+does not.} My first feasibility test (Section~\ref{sec:prelim}) showed that
+the teacher does not help when every image has real depth, which is why I
+focus on the few-label setting.
+
+%--------------------------------------------------------------------
+\section{Problem Statement}
+
+\paragraph{Task.} Given one RGB image, predict a depth map, i.e.\ a distance
+value in meters for every pixel.
+
+\paragraph{Dataset.} I will use NYU Depth V2~\cite{silberman2012}, which
+contains indoor scenes recorded with a Microsoft Kinect. I use the common
+training subset of 50,688 images from 284 scenes~\cite{alhashim2018} and the
+standard test set of 654 images. To simulate few labels, I keep the real depth
+for only a part of the training images (1\%, 5\%, 25\% or 100\%) and treat the
+rest as unlabeled. Frames from the same room look very similar, so I will hold
+out a validation set \emph{by scene} and use it for all tuning; the 654 test
+images are used only for the final results.
+
+\paragraph{Expected results.} I expect that:
+\begin{itemize}
+  \item with all labels, the teacher adds little (my first test already shows this);
+  \item with few labels (1--5\%), a student that also learns from the teacher's
+        outputs on the unlabeled images will be clearly more accurate than a
+        student trained only on the labeled images;
+  \item this gap will shrink as the labeled part grows;
+  \item the student will be about 8 times smaller than the teacher and run in
+        real time on a laptop GPU.
+\end{itemize}
+
+\paragraph{Evaluation.} I will use the standard depth metrics: absolute
+relative error (AbsRel), root mean squared error (RMSE) and threshold accuracy
+$\delta < 1.25$. To measure efficiency, I will report the number of
+parameters, FLOPs and inference time. I will also compare with published
+lightweight models such as FastDepth~\cite{wofk2019}.
+
+%--------------------------------------------------------------------
+\section{Technical Approach}
+
+\paragraph{Teacher.} Depth Anything V2 Small~\cite{yang2024dav2} (24.8M
+parameters). I run it only once on all training images and save its outputs,
+so the teacher is not needed during training. Its output is relative inverse
+depth, which is correct only up to an unknown scale and shift. On labeled
+images this could be fixed with the real depth, but unlabeled images have no
+real depth. So for the teacher term I use a \emph{scale-and-shift-invariant}
+loss~\cite{ranftl2022}: for each image, the student's prediction (converted to
+inverse depth) is first aligned to the teacher output by least squares, and
+only then compared. This way, the teacher term never uses real depth.
+
+\paragraph{Student.} A small encoder--decoder network: a pretrained
+MobileNetV3~\cite{howard2019} or EfficientNet-B0~\cite{tan2019} encoder and a
+light decoder similar to FastDepth~\cite{wofk2019}. I use three sizes (about
+1M, 3M and 4M parameters) and an input size of $256 \times 192$.
+
+\paragraph{Training loss.}
+\begin{equation}
+  \mathcal{L} \;=\; \lambda_{1}\,\mathcal{L}_{\text{gt}}
+  \;+\; \lambda_{2}\,\mathcal{L}_{\text{teacher}}
+  \;+\; \lambda_{3}\,\mathcal{L}_{\text{edge}}
+\end{equation}
+$\mathcal{L}_{\text{gt}}$ is the scale-invariant log loss~\cite{eigen2014}
+against the real depth, used only on labeled images; it teaches the student
+the real scale in meters. $\mathcal{L}_{\text{teacher}}$ is the
+scale-and-shift-invariant L1 loss against the teacher, used on all images; it
+teaches the shape of the scene. $\mathcal{L}_{\text{edge}}$ matches the image
+gradients of the aligned prediction and the teacher output, so the student
+learns sharp object borders.
+
+\paragraph{Experiments.} I train the same student several times and change
+only one thing each time. The main setting uses 5\% labels.
+
+\begin{center}
+\small
+\begin{tabular}{@{}cl@{}}
+\toprule
+\textbf{ID} & \textbf{Setting} \\
+\midrule
+E1 & Real depth only, on the labeled images (baseline) \\
+E2 & Real depth + teacher, on the labeled images only (does the teacher signal help by itself?) \\
+E3 & Real depth on the labeled images + teacher on all images \\
+E4 & E3 + edge loss (full recipe) \\
+E5 & E1 vs.\ E4 with 1\% / 5\% / 25\% / 100\% labels \\
+E6 & E4 with student sizes of about 1M / 3M / 4M parameters \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+All runs use the same number of training steps (about 63k steps at batch size
+8, roughly 10 epochs over 50K images), and I pick the best checkpoint on the
+validation set, so the runs are fair to compare. I will also show depth maps
+for success and failure cases.
+
+%--------------------------------------------------------------------
+\section{Preliminary Results}
+\label{sec:prelim}
+
+To check that the plan is realistic, I wrote a feasibility script and ran it on
+my laptop (Apple M4 Pro, 24\,GB). It runs the teacher, builds the 3.15M student
+and trains it for 1,500 steps on 2,000 random training images (about 7
+minutes), then tests on 200 test images:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Model} & \textbf{AbsRel}~$\downarrow$ & \textbf{RMSE}~$\downarrow$ & $\boldsymbol{\delta<1.25}$~$\uparrow$ \\
+\midrule
+Constant depth (sanity check) & 0.416 & 1.209 & 0.386 \\
+Student, real depth only      & 0.202 & 0.675 & 0.675 \\
+Student, real depth + teacher & 0.204 & 0.677 & 0.673 \\
+Teacher, aligned with real depth (optimistic reference) & 0.093 & 0.430 & 0.911 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The student clearly learns, but the teacher gives no gain here. I checked the
+data: the NYU training depth maps are already filled, with 0\% missing pixels,
+so with full labels the teacher mostly repeats information that the student
+already has. This result led me to the few-label setting. An earlier test on a
+copy of NYU that covers only a few rooms overfit badly ($\delta<1.25 = 0.33$),
+which is why I will split the validation set by scene.
+
+The teacher needs about 40\,ms per image (0.6 hours for all 50K images). The
+student needs 0.74 GFLOPs and 8.6\,ms per image on the laptop GPU (peak memory
+2.8\,GB). One full run takes about 4.6 hours, so the 12 runs of E1--E6 need
+about 55 GPU hours, which I will split between my laptop and Colab Pro.
+
+\paragraph{Plan.} \textbf{Nov 2--8:} teacher outputs, scene-based validation
+split, teacher loss. \textbf{Nov 9--22:} E1 at all label budgets, E3 and E4 at
+5\%. \textbf{Nov 23--Dec 13:} E2, E5, E6 and analysis. \textbf{Dec 14--27:}
+figures, final report and presentation. If time becomes short, I will keep
+only the 5\% and 100\% budgets in E5 and drop E6.
+
+%--------------------------------------------------------------------
+\begin{thebibliography}{99}
+\footnotesize
+\setlength{\itemsep}{0pt}
+
+\bibitem{eigen2014}
+D.~Eigen, C.~Puhrsch, and R.~Fergus.
+Depth map prediction from a single image using a multi-scale deep network.
+In \emph{NeurIPS}, 2014.
+
+\bibitem{yang2024dav2}
+L.~Yang, B.~Kang, Z.~Huang, Z.~Zhao, X.~Xu, J.~Feng, and H.~Zhao.
+Depth Anything V2.
+In \emph{NeurIPS}, 2024.
+
+\bibitem{hinton2015}
+G.~Hinton, O.~Vinyals, and J.~Dean.
+Distilling the knowledge in a neural network.
+\emph{arXiv:1503.02531}, 2015.
+
+\bibitem{wang2021kd}
+Y.~Wang, X.~Li, M.~Shi, K.~Xian, and Z.~Cao.
+Knowledge distillation for fast and accurate monocular depth estimation on
+mobile devices.
+In \emph{CVPR Workshops}, 2021.
+
+\bibitem{tosi2026zipdepth}
+F.~Tosi, L.~Bartolomei, M.~Poggi, and S.~Mattoccia.
+ZipDepth: Bringing lightweight zero-shot monocular depth anywhere, on any
+device.
+\emph{arXiv:2607.08771}, 2026.
+
+\bibitem{silberman2012}
+N.~Silberman, D.~Hoiem, P.~Kohli, and R.~Fergus.
+Indoor segmentation and support inference from RGBD images.
+In \emph{ECCV}, 2012.
+
+\bibitem{alhashim2018}
+I.~Alhashim and P.~Wonka.
+High quality monocular depth estimation via transfer learning.
+\emph{arXiv:1812.11941}, 2018.
+
+\bibitem{ranftl2022}
+R.~Ranftl, K.~Lasinger, D.~Hafner, K.~Schindler, and V.~Koltun.
+Towards robust monocular depth estimation: Mixing datasets for zero-shot
+cross-dataset transfer.
+\emph{IEEE TPAMI}, 2022.
+
+\bibitem{howard2019}
+A.~Howard et~al.
+Searching for MobileNetV3.
+In \emph{ICCV}, 2019.
+
+\bibitem{tan2019}
+M.~Tan and Q.~V.~Le.
+EfficientNet: Rethinking model scaling for convolutional neural networks.
+In \emph{ICML}, 2019.
+
+\bibitem{wofk2019}
+D.~Wofk, F.~Ma, T.-J.~Yang, S.~Karaman, and V.~Sze.
+FastDepth: Fast monocular depth estimation on embedded systems.
+In \emph{ICRA}, 2019.
+
+\end{thebibliography}
+
+\end{document}

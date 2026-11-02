@@ -1,0 +1,97 @@
+{
+  "config": {
+    "source": "densedepth",
+    "data_zip": "nyu_data",
+    "n_train": 2000,
+    "n_val": 200,
+    "teacher": "small",
+    "teacher_batch": 8,
+    "student": "small",
+    "recipes": "gt,full",
+    "steps": 1500,
+    "batch_size": 8,
+    "lr": 0.0005,
+    "lambda_edge": 1.0,
+    "plan_epochs": 20,
+    "device": "mps",
+    "out": "feasibility_results",
+    "no_pretrained": false,
+    "no_cache": false,
+    "quick": false,
+    "seed": 0,
+    "torch": "2.14.1",
+    "resolution": [
+      256,
+      192
+    ]
+  },
+  "data": {
+    "train": {
+      "n": 2000,
+      "fetch_s_per_img": 0.0029819064775656445,
+      "teacher_s_per_img": 0.04020028287646184,
+      "teacher_align_failures": 2
+    },
+    "val": {
+      "n": 200,
+      "fetch_s_per_img": 0.011899778564838925,
+      "teacher_s_per_img": 0.04017839908859363,
+      "teacher_align_failures": 0
+    }
+  },
+  "efficiency": {
+    "student": "small",
+    "params_M": 3.153393,
+    "GFLOPs": 0.74011008,
+    "latency_ms_device": 8.620604501629714,
+    "latency_ms_cpu": 122.50447899714345
+  },
+  "training": {
+    "gt": {
+      "final_loss": 0.17318451404571533,
+      "s_per_step": 0.2630635420064209,
+      "peak_mem_gb": 1.749581824,
+      "val": {
+        "AbsRel": 0.20190463960170746,
+        "RMSE": 0.6747184991836548,
+        "delta1": 0.6750222778320313
+      }
+    },
+    "full": {
+      "final_loss": 0.35085448682308196,
+      "s_per_step": 0.2635590629943181,
+      "peak_mem_gb": 2.824552448,
+      "val": {
+        "AbsRel": 0.20432990789413452,
+        "RMSE": 0.6768752932548523,
+        "delta1": 0.6731523640950521
+      }
+    }
+  },
+  "reference": {
+    "constant_median_depth": {
+      "AbsRel": 0.4163808524608612,
+      "RMSE": 1.2091108560562134,
+      "delta1": 0.3856105550130208
+    },
+    "teacher_aligned_per_image_optimistic": {
+      "AbsRel": 0.09329717606306076,
+      "RMSE": 0.42950209975242615,
+      "delta1": 0.9109598795572915
+    }
+  },
+  "estimates_full_project": {
+    "teacher_precompute_h_50k": 0.5660199829005826,
+    "teacher_cache_gb_50k_fp16": 4.982833152,
+    "lowres_dataset_cache_gb_50k": 17.439916032,
+    "train_h_per_epoch_50k": 0.4634278924006503,
+    "train_h_per_run": 9.268557848013007,
+    "plan_runs": 6.5,
+    "plan_total_h": 60.81164599498513
+  },
+  "verdict": {
+    "student_learns": true,
+    "compute_fit": "TIGHT: doable, but use fewer epochs, a smaller student, or run the longest jobs on a faster Colab GPU.",
+    "teacher_effect_in_short_run": "no clear difference (within noise, < 3%)"
+  }
+}
