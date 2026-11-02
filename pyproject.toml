@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kd-depth"
+version = "0.1.0"
+description = "Small and fast monocular depth estimation with few labels, by distillation from Depth Anything V2"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{ name = "Oğuz Kağan Göçmez", email = "kagan.gocmez@ozu.edu.tr" }]
+dependencies = [
+    "torch>=2.14",
+    "torchvision>=0.29",
+    "transformers>=5.22",
+    "numpy>=2.5",
+    "pillow>=12.3",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+hf = ["datasets"]          # only for streaming NYU from Hugging Face (scripts/feasibility.py --source hf)
+dev = ["ruff"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = [
+    "E731",   # small lambdas assigned to names are used on purpose
+    "B905",   # zip() without strict=
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["kd_depth"]

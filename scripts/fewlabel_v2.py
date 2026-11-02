@@ -3,7 +3,6 @@
 CS466 term project - few-label experiment, v2 (E1-E4 at one label budget, optional E5 sweep)
 
 v2 changes: teacher weight ramp-up, gradient clipping, scale column, "mixed" verdict.
-Writes to ./fewlabel_results_v2/ and reuses the teacher cache in ./fewlabel_results/cache/.
 
 Question: when only a few training images have real depth, does learning from the
 teacher on the other images help the small student?
@@ -18,12 +17,13 @@ The teacher term never uses real depth: it is scale-and-shift invariant
 (Ranftl et al., MiDaS), so it also works on unlabeled images.
 Validation uses held-out training SCENES, never the 654 test images.
 
-Needs feasibility.py in the same folder. Run:
-  python3 fewlabel_v2.py --quick         # ~3 min smoke test
-  python3 fewlabel_v2.py                 # E1-E4, 250 of 5000 images labeled (5%), ~40 min
-  python3 fewlabel_v2.py --labeled 50,250,1250,5000 --recipes gt,semi_edge
+Run from the repository root:
+  python scripts/fewlabel_v2.py --quick         # ~3 min smoke test
+  python scripts/fewlabel_v2.py                 # E1-E4, 250 of 5000 images labeled (5%), ~40 min
+  python scripts/fewlabel_v2.py --labeled 50,250,1250,5000 --recipes gt,semi_edge
                                       # mini E5 sweep (1/5/25/100%), ~75 min
-Data defaults to ./nyu_data (zip or folder). Results go to ./fewlabel_results_v2/.
+Data defaults to data/nyu_data (zip or folder). Results go to results/fewlabel_v2/,
+the data + teacher cache to cache/.
 """
 import os
 
@@ -35,6 +35,7 @@ import io
 import json
 import random
 import re
+import sys
 import time
 import zipfile
 from pathlib import Path
@@ -44,8 +45,11 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 
-import feasibility as fz
-from feasibility import H, W, MIN_D, MAX_D
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+import kd_depth.core as fz  # noqa: E402
+from kd_depth.core import MAX_D, MIN_D, H, W  # noqa: E402
+from kd_depth.runinfo import run_info  # noqa: E402
 
 RECIPES = {
     "gt":        dict(teacher=False, pool="labeled", edge=False, exp="E1"),
@@ -301,7 +305,7 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
 # ----------------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--data", default="nyu_data", help="DenseDepth zip/folder, or 'dummy'")
+    ap.add_argument("--data", default="data/nyu_data", help="DenseDepth zip/folder, or 'dummy'")
     ap.add_argument("--pool", type=int, default=5000, help="training images (labeled + unlabeled)")
     ap.add_argument("--labeled", default="250", help="labeled images, comma list for a sweep")
     ap.add_argument("--n-val", type=int, default=300)
@@ -321,9 +325,9 @@ def main():
                     help="fraction of steps over which the teacher weight grows from 0 (0 = off)")
     ap.add_argument("--clip", type=float, default=1.0, help="gradient-norm clipping (0 = off)")
     ap.add_argument("--device", default="auto")
-    ap.add_argument("--out", default="fewlabel_results_v2")
-    ap.add_argument("--cache-dir", default="fewlabel_results/cache",
-                    help="shared with fewlabel.py, so the teacher is not run again")
+    ap.add_argument("--out", default="results/fewlabel_v2")
+    ap.add_argument("--cache-dir", default="cache",
+                    help="data + teacher output cache, shared by all scripts")
     ap.add_argument("--no-pretrained", action="store_true")
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--quick", action="store_true")
@@ -429,7 +433,8 @@ def main():
     if len(seeds) == 1:
         print("Note: one seed only. Differences below ~3% may be noise; use --seeds 0,1,2 to check.")
 
-    report = {"config": vars(args) | {"device": str(device)}, "data": meta, "reference": ref,
+    report = {"run": run_info(), "config": vars(args) | {"device": str(device)},
+              "data": meta, "reference": ref,
               "results": results, "verdicts": {str(k): v for k, v in verdicts.items()}}
     (out / "report.json").write_text(json.dumps(report, indent=2))
     fz.save_figure(out / "examples.png", val, val_teacher, fig_preds)

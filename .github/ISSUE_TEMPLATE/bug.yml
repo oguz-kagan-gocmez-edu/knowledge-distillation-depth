@@ -1,0 +1,27 @@
+name: Bug
+description: Something in the code is wrong or crashes
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      render: bash
+  - type: input
+    id: commit
+    attributes:
+      label: Commit
+      description: Output of `git rev-parse --short HEAD`
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error / log output
+      render: text

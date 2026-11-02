@@ -1,12 +1,13 @@
 # Dataset (download separately, see README)
-nyu_data/
+data/
 *.zip
 
-# Cached teacher outputs (large, can be rebuilt)
+# Cached data + teacher outputs (large, rebuilt automatically)
 cache/
 *.npz
 
-# Model weights
+# Model weights / checkpoints
+checkpoints/
 *.pt
 *.pth
 *.ckpt
@@ -15,8 +16,12 @@ cache/
 # Python
 __pycache__/
 *.pyc
+*.egg-info/
+build/
+dist/
 .venv/
 venv/
+.ruff_cache/
 
 # LaTeX build files
 *.aux
@@ -24,6 +29,7 @@ venv/
 *.synctex.gz
 *.fls
 *.fdb_latexmk
+docs/**/*.log
 
 # OS / editor
 .DS_Store
