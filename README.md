@@ -23,6 +23,8 @@ scripts/             experiment entry points
   feasibility.py       full-label feasibility test (+ speed / FLOPs / compute estimates)
   fewlabel_v2.py       few-label experiments E1–E4 (current)
   fewlabel_v1.py       first version, kept for reproducibility
+notebooks/           colab_run.ipynb: long runs on a Colab GPU, with checkpoints on Drive
+tests/               unit tests (resume, cache reuse, label budgets)
 results/             one folder per run: report.json, examples.png, run.log
 docs/proposal/       proposal (LaTeX + PDF)
 docs/course/         course project brief
@@ -46,14 +48,27 @@ Data: put the DenseDepth copy of NYU Depth V2 (50,688 train / 654 test images,
 All commands run from the repository root.
 
 ```bash
+make test                                            # unit tests, ~2 min
 make smoke                                           # offline check of every script, ~2 min
 python scripts/fewlabel_v2.py --quick                # ~3 min on real data
 python scripts/fewlabel_v2.py                        # E1–E4 at 5% labels, ~40 min (M4 Pro)
-python scripts/fewlabel_v2.py --labeled 50,250,1250,5000 --recipes gt,semi_edge --out results/sweep
+python scripts/fewlabel_v2.py --labeled 1%,5%,25%,100% --recipes gt,semi_edge --out results/sweep
+python scripts/fewlabel_v2.py --pool -1 --labeled 5% --ckpt-dir checkpoints/full   # all ~45K images
 python scripts/feasibility.py --source densedepth --data-zip data/nyu_data
 ```
 
 The first run on real data computes the teacher outputs and caches them in `cache/`.
+The 5,000-image runs use the original single-file cache; larger pools use a folder of `.npy`
+files read from disk on demand, so the full pool (~20 GB) needs little RAM.
+With `--ckpt-dir`, a run saves checkpoints every `--ckpt-every` steps; starting it again with the
+same arguments continues where it stopped, and finished runs are skipped.
+
+## Long runs on Colab
+
+Open [`notebooks/colab_run.ipynb`](notebooks/colab_run.ipynb) in Colab (File → Open notebook → GitHub),
+follow the one-time setup at the top (upload `nyu_data.zip` to `MyDrive/kd_depth/`, add a read-only
+`GITHUB_TOKEN` secret, pick an L4 GPU), set `RUN_NAME` and `ARGS`, and Run all. Teacher outputs,
+checkpoints and results are kept on Drive, so after a disconnect Run all simply continues.
 
 | Recipe | ID | Training signal |
 |---|---|---|

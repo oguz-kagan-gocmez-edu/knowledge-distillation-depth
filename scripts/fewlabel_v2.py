@@ -20,7 +20,7 @@ Validation uses held-out training SCENES, never the 654 test images.
 Run from the repository root:
   python scripts/fewlabel_v2.py --quick         # ~3 min smoke test
   python scripts/fewlabel_v2.py                 # E1-E4, 250 of 5000 images labeled (5%), ~40 min
-  python scripts/fewlabel_v2.py --labeled 50,250,1250,5000 --recipes gt,semi_edge
+  python scripts/fewlabel_v2.py --labeled 1%,5%,25%,100% --recipes gt,semi_edge
                                       # mini E5 sweep (1/5/25/100%), ~75 min
 Data defaults to data/nyu_data (zip or folder). Results go to results/fewlabel_v2/,
 the data + teacher cache to cache/.
@@ -35,6 +35,7 @@ import io
 import json
 import random
 import re
+import shutil
 import sys
 import time
 import zipfile
@@ -48,7 +49,8 @@ from PIL import Image
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import kd_depth.core as fz  # noqa: E402
-from kd_depth.core import MAX_D, MIN_D, H, W  # noqa: E402
+from kd_depth import poolcache  # noqa: E402
+from kd_depth.core import MAX_D, MIN_D  # noqa: E402
 from kd_depth.runinfo import run_info  # noqa: E402
 
 RECIPES = {
@@ -118,70 +120,66 @@ def iter_rows(rows, read, resolve):
         yield rgb, depth
 
 
-def load_set(samples, n, teacher, bs, tag):
-    """Resize to H x W and store the RAW teacher output (relative inverse depth)."""
-    rgb = np.zeros((n, H, W, 3), np.uint8)
-    depth = np.zeros((n, H, W), np.float32)
-    disp = np.zeros((n, H, W), np.float16)
-    batch, k, t0 = [], 0, time.perf_counter()
+def build_data(args, device):
+    """Pool (labeled + unlabeled training images) and validation set, with teacher outputs.
 
-    def flush():
-        nonlocal k
-        out = teacher([b[0] for b in batch])
-        for (im, dep), d in zip(batch, out):
-            rgb[k] = np.asarray(im.resize((W, H), Image.BILINEAR))
-            depth[k] = np.asarray(Image.fromarray(dep).resize((W, H), Image.NEAREST))
-            disp[k] = d
-            k += 1
-        batch.clear()
-
-    for im, dep in samples:
-        batch.append((im, dep))
-        if len(batch) == bs:
-            flush()
-            if k % 500 < bs:
-                print(f"  [{tag}] {k}/{n} images ({time.perf_counter() - t0:.0f}s)")
-    if batch:
-        flush()
-    print(f"  [{tag}] {k}/{n} images ({time.perf_counter() - t0:.0f}s)")
-    return {"rgb": rgb[:k], "depth": depth[:k], "disp": disp[:k]}
-
-
-def build_data(args, device, out):
-    tag = "dummy" if args.data == "dummy" else "densedepth"
-    cache = Path(args.cache_dir) / f"{tag}_pool{args.pool}_val{args.n_val}_seed{args.seed}_{args.teacher}.npz"
-    if cache.exists() and not args.no_cache:
-        d = np.load(cache)
-        print(f"  loaded data + teacher outputs from cache {cache.name}")
+    Old single-file caches (.npz, all in RAM) are still read, so past runs stay reproducible.
+    New caches are folders of .npy files read from disk on demand (kd_depth.poolcache),
+    so the full ~45K-image pool works with little RAM.
+    """
+    dummy = args.data == "dummy"
+    tag = "dummy" if dummy else "densedepth"
+    old = Path(args.cache_dir) / f"{tag}_pool{args.pool}_val{args.n_val}_seed{args.seed}_{args.teacher}.npz"
+    if old.exists() and not args.no_cache:
+        d = np.load(old)
+        print(f"  loaded data + teacher outputs from cache {old.name}")
         meta = json.loads(str(d["meta"]))
         pool = {k: d[f"pool_{k}"] for k in ("rgb", "depth", "disp")}
         val = {k: d[f"val_{k}"] for k in ("rgb", "depth", "disp")}
         return pool, val, meta
 
-    teacher = (fz.DummyTeacher() if args.data == "dummy"
-               else fz.DepthAnythingTeacher(args.teacher, device))
-    print(f"  teacher: {teacher.name}")
-    if args.data == "dummy":
+    loaded = []                                 # load the teacher once, and only if needed
+
+    def make_teacher():
+        if not loaded:
+            loaded.append(fz.DummyTeacher() if dummy else fz.DepthAnythingTeacher(args.teacher, device))
+            print(f"  teacher: {loaded[0].name}")
+        return loaded[0]
+
+    if dummy:
+        if args.pool < 0:
+            raise SystemExit("--pool -1 (all images) needs real data")
+        n_pool, n_val = args.pool, args.n_val
         meta = {"scenes": None}
-        pool = load_set(fz.iter_dummy("train", args.pool, args.seed), args.pool, teacher,
-                        args.teacher_batch, "pool")
-        val = load_set(fz.iter_dummy("val", args.n_val, args.seed), args.n_val, teacher,
-                       args.teacher_batch, "val")
+        pool_src = lambda: fz.iter_dummy("train", n_pool, args.seed)
+        val_src = lambda: fz.iter_dummy("val", n_val, args.seed)
+        pool_key = poolcache.list_hash(["dummy-train", n_pool, args.seed])
+        val_key = poolcache.list_hash(["dummy-val", n_val, args.seed])
     else:
         rows, read, resolve = open_densedepth(args.data)
         train_rows, val_rows, n_sc, n_val_sc = scene_split(rows, args.val_scene_frac, args.seed)
         rng = random.Random(args.seed)
         rng.shuffle(train_rows)
         rng.shuffle(val_rows)
-        print(f"  {len(rows)} images in {n_sc} rooms -> {n_val_sc} rooms held out for validation")
-        meta = {"rooms": n_sc, "val_rooms": n_val_sc}
-        pool = load_set(iter_rows(train_rows[:args.pool], read, resolve), min(args.pool, len(train_rows)),
-                        teacher, args.teacher_batch, "pool")
-        val = load_set(iter_rows(val_rows[:args.n_val], read, resolve), min(args.n_val, len(val_rows)),
-                       teacher, args.teacher_batch, "val")
-    del teacher
-    np.savez(cache, meta=json.dumps(meta),
-             **{f"pool_{k}": v for k, v in pool.items()}, **{f"val_{k}": v for k, v in val.items()})
+        pool_rows = train_rows if args.pool < 0 else train_rows[:args.pool]
+        val_rows = val_rows[:args.n_val]
+        n_pool, n_val = len(pool_rows), len(val_rows)
+        print(f"  {len(rows)} images in {n_sc} rooms -> {n_val_sc} rooms held out for validation; "
+              f"pool {n_pool}, val {n_val}")
+        meta = {"rooms": n_sc, "val_rooms": n_val_sc, "pool": n_pool, "val": n_val}
+        pool_src = lambda: iter_rows(pool_rows, read, resolve)
+        val_src = lambda: iter_rows(val_rows, read, resolve)
+        pool_key, val_key = poolcache.list_hash(pool_rows), poolcache.list_hash(val_rows)
+
+    cdir = Path(args.cache_dir) / f"{tag}_pool{n_pool}_val{n_val}_seed{args.seed}"
+    if args.no_cache and cdir.exists():
+        shutil.rmtree(cdir)
+    pool = poolcache.build(cdir / "pool", n_pool, pool_src, pool_key, make_teacher, args.teacher,
+                           args.teacher_batch, "pool")
+    val = poolcache.build(cdir / "val", n_val, val_src, val_key, make_teacher, args.teacher,
+                          args.teacher_batch, "val")
+    val = {k: np.asarray(v) for k, v in val.items()}           # small: keep in RAM
+    loaded.clear()                                             # free the teacher's memory
     return pool, val, meta
 
 
@@ -227,22 +225,89 @@ def scale_ratio(preds, gts):
 # ----------------------------------------------------------------------------
 # Training one (recipe, label budget, seed)
 # ----------------------------------------------------------------------------
+def run_name(recipe, n_lab, seed):
+    return f"{recipe}_lab{n_lab}_seed{seed}"
+
+
+def run_signature(recipe, n_lab, seed, n_pool, args):
+    """Everything that changes a run's result: a checkpoint is only resumed if this matches."""
+    keys = ("student", "teacher", "steps", "eval_every", "batch_size", "lr", "lambda_t",
+            "lambda_e", "ramp", "clip", "no_pretrained", "data", "n_val", "val_scene_frac", "seed")
+    return {"recipe": recipe, "n_lab": n_lab, "train_seed": seed, "n_pool": n_pool,
+            **{k: getattr(args, k) for k in keys}}
+
+
+def _rng_states():
+    st = {"cpu": torch.get_rng_state()}
+    if torch.cuda.is_available():
+        st["cuda"] = torch.cuda.get_rng_state_all()
+    if torch.backends.mps.is_available():
+        st["mps"] = torch.mps.get_rng_state()
+    return st
+
+
+def _set_rng_states(st):
+    torch.set_rng_state(st["cpu"])
+    if "cuda" in st and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all(st["cuda"])
+    if "mps" in st and torch.backends.mps.is_available():
+        torch.mps.set_rng_state(st["mps"])
+
+
+def _save(obj, path):
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    torch.save(obj, tmp)
+    os.replace(tmp, path)                      # never leaves a half-written checkpoint
+
+
 def train_run(recipe, n_lab, seed, pool, val, args, device):
     cfg = RECIPES[recipe]
+    n_pool, bs = len(pool["rgb"]), args.batch_size
+    sig = run_signature(recipe, n_lab, seed, n_pool, args)
+    ckpt = done = None
+    if args.ckpt_dir:
+        cdir = Path(args.ckpt_dir)
+        cdir.mkdir(parents=True, exist_ok=True)
+        ckpt = cdir / f"{run_name(recipe, n_lab, seed)}.pt"
+        done = cdir / f"{run_name(recipe, n_lab, seed)}.done.pt"
+        if done.exists():
+            r = torch.load(done, weights_only=False)
+            if r["signature"] != sig:
+                raise SystemExit(f"{done} was made with other settings; use another --ckpt-dir")
+            print(f"    already finished (from {done.name}), skipping")
+            return r["best"], r["history"], r["preds"].astype(np.float32), r["seconds"]
+
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
     model = fz.Student(args.student, pretrained=not args.no_pretrained).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps,
                                                 pct_start=max(0.1, 3 / args.steps))
-    rgb = torch.from_numpy(pool["rgb"])
-    depth = torch.from_numpy(pool["depth"])
-    disp = torch.from_numpy(pool["disp"])
-    n_pool, bs = len(rgb), args.batch_size
+    rgb, depth, disp = pool["rgb"], pool["depth"], pool["disp"]   # numpy, maybe memory-mapped
 
-    best, hist, logs = None, [], {"gt": [], "teacher": [], "edge": []}
+    best, best_state, hist, logs = None, None, [], {"gt": [], "teacher": [], "edge": []}
+    start, spent = 1, 0.0
+    if ckpt is not None and ckpt.exists():
+        c = torch.load(ckpt, weights_only=False, map_location="cpu")
+        if c["signature"] != sig:
+            raise SystemExit(f"{ckpt} was made with other settings; use another --ckpt-dir")
+        model.load_state_dict(c["model"])
+        opt.load_state_dict(c["opt"])
+        sched.load_state_dict(c["sched"])
+        gen.set_state(c["gen"])
+        _set_rng_states(c["rng"])
+        best, best_state, hist, logs = c["best"], c["best_state"], c["history"], c["logs"]
+        start, spent = c["step"] + 1, c["seconds"]
+        print(f"    resuming from step {c['step']} ({ckpt.name})")
+
+    def checkpoint(step):
+        _save({"signature": sig, "step": step, "seconds": spent + time.perf_counter() - t_start,
+               "model": model.state_dict(), "opt": opt.state_dict(), "sched": sched.state_dict(),
+               "gen": gen.get_state(), "rng": _rng_states(), "best": best,
+               "best_state": best_state, "history": hist, "logs": logs}, ckpt)
+
     t_start = time.perf_counter()
-    for step in range(1, args.steps + 1):
+    for step in range(start, args.steps + 1):
         model.train()
         if cfg["pool"] == "all":                       # half labeled, half from all images
             n_l = bs // 2
@@ -252,8 +317,9 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         else:
             idx = torch.randint(0, n_lab, (bs,), generator=gen)
             is_lab = torch.ones(bs, dtype=torch.bool)
-        x = rgb[idx].permute(0, 3, 1, 2).float().div(255)
-        d, t = depth[idx].clone(), disp[idx].float()
+        ii = idx.numpy()
+        x = torch.from_numpy(rgb[ii]).permute(0, 3, 1, 2).float().div(255)
+        d, t = torch.from_numpy(depth[ii]), torch.from_numpy(disp[ii]).float()
         flip = torch.rand(bs, generator=gen) < 0.5
         x[flip], d[flip], t[flip] = x[flip].flip(-1), d[flip].flip(-1), t[flip].flip(-1)
         x, d, t, is_lab = x.to(device), d.to(device), t.to(device), is_lab.to(device)
@@ -279,9 +345,9 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         sched.step()
         logs["gt"].append(l_gt.item())
 
-        if step == 50:
+        if step == start + 49:
             el = time.perf_counter() - t_start
-            print(f"    ~{el / 50 * args.steps / 60:.0f} min for this run")
+            print(f"    ~{el / 50 * (args.steps - start + 1) / 60:.0f} min left for this run")
         if step % args.eval_every == 0 or step == args.steps:
             p_val = fz.predict(model, val["rgb"], device)
             m = fz.depth_metrics(p_val, val["depth"])
@@ -293,11 +359,32 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             parts = "  ".join(f"{k} {np.mean(v[-args.eval_every:]):.3f}" for k, v in logs.items() if v)
             print(f"    step {step:>5}  {parts}  | val AbsRel {m['AbsRel']:.3f}  "
-                  f"d1 {m['delta1']:.3f}  scale x{m['scale']:.2f}")
+                  f"d1 {m['delta1']:.3f}  scale x{m['scale']:.2f}", flush=True)
+        if ckpt is not None and step < args.steps and (
+                step % args.ckpt_every == 0 or step == args.stop_after):
+            checkpoint(step)
+        if step == args.stop_after:
+            print(f"stopped after step {step} (--stop-after); run again to resume")
+            raise SystemExit(0)
 
     model.load_state_dict(best_state)
     preds = fz.predict(model, val["rgb"], device)
-    return best, hist, preds, time.perf_counter() - t_start
+    seconds = spent + time.perf_counter() - t_start
+    if done is not None:
+        _save({"signature": sig, "best": best, "history": hist, "seconds": seconds,
+               "preds": preds.astype(np.float16)}, done)
+        ckpt.unlink(missing_ok=True)
+    return best, hist, preds, seconds
+
+
+def parse_budgets(spec, n_pool):
+    """"250,5%" -> sorted label counts; percentages are of the pool size."""
+    out = set()
+    for part in spec.split(","):
+        part = part.strip()
+        n = round(float(part[:-1]) / 100 * n_pool) if part.endswith("%") else int(part)
+        out.add(max(1, min(n, n_pool)))
+    return sorted(out)
 
 
 # ----------------------------------------------------------------------------
@@ -306,8 +393,10 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", default="data/nyu_data", help="DenseDepth zip/folder, or 'dummy'")
-    ap.add_argument("--pool", type=int, default=5000, help="training images (labeled + unlabeled)")
-    ap.add_argument("--labeled", default="250", help="labeled images, comma list for a sweep")
+    ap.add_argument("--pool", type=int, default=5000,
+                    help="training images (labeled + unlabeled); -1 = all training images")
+    ap.add_argument("--labeled", default="250",
+                    help="labeled images: count or percent of the pool (250, 5%%); comma list = sweep")
     ap.add_argument("--n-val", type=int, default=300)
     ap.add_argument("--val-scene-frac", type=float, default=0.1)
     ap.add_argument("--recipes", default="gt,gt_t,semi,semi_edge")
@@ -328,6 +417,12 @@ def main():
     ap.add_argument("--out", default="results/fewlabel_v2")
     ap.add_argument("--cache-dir", default="cache",
                     help="data + teacher output cache, shared by all scripts")
+    ap.add_argument("--ckpt-dir", default=None,
+                    help="save checkpoints here and resume from them (e.g. on Google Drive)")
+    ap.add_argument("--ckpt-every", type=int, default=1000, help="steps between checkpoints")
+    ap.add_argument("--stop-after", type=int, default=0, help=argparse.SUPPRESS)  # for testing resume
+    ap.add_argument("--prepare-only", action="store_true",
+                    help="only build the data + teacher cache, then exit")
     ap.add_argument("--no-pretrained", action="store_true")
     ap.add_argument("--no-cache", action="store_true")
     ap.add_argument("--quick", action="store_true")
@@ -336,14 +431,14 @@ def main():
 
     if args.quick:
         args.pool, args.n_val, args.steps, args.eval_every = 300, 60, 60, 30
-        args.labeled = ",".join(str(max(4, int(int(n) * 300 / 5000))) for n in args.labeled.split(","))
+        args.labeled = ",".join(n if n.strip().endswith("%") else str(max(4, int(int(n) * 300 / 5000)))
+                                for n in args.labeled.split(","))
     if args.data == "dummy":
         args.no_pretrained = True
     recipes = [r.strip() for r in args.recipes.split(",") if r.strip()]
     for r in recipes:
         if r not in RECIPES:
             raise SystemExit(f"unknown recipe {r!r}; choose from {list(RECIPES)}")
-    budgets = sorted({int(n) for n in args.labeled.split(",")})
     seeds = [int(s) for s in args.seeds.split(",")]
 
     device = fz.pick_device(args.device)
@@ -351,12 +446,15 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     Path(args.cache_dir).mkdir(parents=True, exist_ok=True)
     random.seed(args.seed), np.random.seed(args.seed), torch.manual_seed(args.seed)
-    n_runs = len(budgets) * len(recipes) * len(seeds)
-    print(f"Device: {device} | {n_runs} training runs x {args.steps} steps")
+    print(f"Device: {device} | {len(recipes)} recipes x {len(seeds)} seeds x {args.steps} steps")
 
     print("\n[1/3] Data (validation = held-out rooms) and teacher outputs")
-    pool, val, meta = build_data(args, device, out)
-    budgets = [min(b, len(pool["rgb"])) for b in budgets]
+    pool, val, meta = build_data(args, device)
+    if args.prepare_only:
+        print(f"Cache ready in {args.cache_dir} (--prepare-only): pool {len(pool['rgb'])}, "
+              f"val {len(val['rgb'])}")
+        return
+    budgets = parse_budgets(args.labeled, len(pool["rgb"]))
     if device.type == "mps":
         torch.mps.empty_cache()
 
