@@ -415,17 +415,19 @@ def edge_loss(pred, target):
 
 def depth_metrics(preds, gts):
     """Standard metrics, computed per image and then averaged."""
-    absrel, rmse, d1 = [], [], []
+    m = {k: [] for k in ("AbsRel", "RMSE", "delta1", "delta2", "delta3", "log10")}
     for p, g in zip(preds, gts):
         v = (g > MIN_D) & (g < MAX_D)
         if v.sum() == 0:
             continue
         p, g = np.clip(p[v], MIN_D, MAX_D), g[v]
-        absrel.append(np.mean(np.abs(p - g) / g))
-        rmse.append(np.sqrt(np.mean((p - g) ** 2)))
-        d1.append(np.mean(np.maximum(p / g, g / p) < 1.25))
-    return {"AbsRel": float(np.mean(absrel)), "RMSE": float(np.mean(rmse)),
-            "delta1": float(np.mean(d1))}
+        ratio = np.maximum(p / g, g / p)
+        m["AbsRel"].append(np.mean(np.abs(p - g) / g))
+        m["RMSE"].append(np.sqrt(np.mean((p - g) ** 2)))
+        for i in (1, 2, 3):
+            m[f"delta{i}"].append(np.mean(ratio < 1.25 ** i))
+        m["log10"].append(np.mean(np.abs(np.log10(p) - np.log10(g))))
+    return {k: float(np.mean(v)) for k, v in m.items()}
 
 
 @torch.no_grad()
@@ -433,7 +435,7 @@ def predict(model, rgb, device, bs=16):
     model.eval()
     out = []
     for i in range(0, len(rgb), bs):
-        x = torch.from_numpy(rgb[i:i + bs]).permute(0, 3, 1, 2).float().div(255).to(device)
+        x = torch.from_numpy(np.array(rgb[i:i + bs])).permute(0, 3, 1, 2).float().div(255).to(device)
         out.append(model(x).float().cpu().numpy())
     return np.concatenate(out)
 
