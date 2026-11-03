@@ -1,0 +1,106 @@
+{
+  "run": {
+    "git_commit": "0e01ce5da418352e9102edb3d9c0215ca4291ce8",
+    "git_branch": "main",
+    "git_dirty": false,
+    "command": "python3 scripts/fewlabel_v2.py --pool -1 --labeled 5% --recipes gt --steps 500 --eval-every 250 --data /content/nyu_data.zip --cache-dir /content/cache --ckpt-dir /content/drive/MyDrive/Colab Notebooks/kd_depth/checkpoints/timing_test --ckpt-every 1000 --out /content/drive/MyDrive/Colab Notebooks/kd_depth/results/timing_test",
+    "started_utc": "2026-11-02T14:55:11+00:00",
+    "python": "3.13.16",
+    "torch": "2.11.0+cu130",
+    "machine": "Linux-6.6.159+-x86_64-with-glibc2.39"
+  },
+  "config": {
+    "data": "/content/nyu_data.zip",
+    "pool": -1,
+    "labeled": "5%",
+    "n_val": 300,
+    "val_scene_frac": 0.1,
+    "recipes": "gt",
+    "seeds": "0",
+    "teacher": "small",
+    "teacher_batch": 8,
+    "student": "small",
+    "steps": 500,
+    "eval_every": 250,
+    "batch_size": 8,
+    "lr": 0.0005,
+    "lambda_t": 1.0,
+    "lambda_e": 0.5,
+    "ramp": 0.3,
+    "clip": 1.0,
+    "device": "cuda",
+    "out": "/content/drive/MyDrive/Colab Notebooks/kd_depth/results/timing_test",
+    "cache_dir": "/content/cache",
+    "ckpt_dir": "/content/drive/MyDrive/Colab Notebooks/kd_depth/checkpoints/timing_test",
+    "ckpt_every": 1000,
+    "stop_after": 0,
+    "prepare_only": false,
+    "no_pretrained": false,
+    "no_cache": false,
+    "quick": false,
+    "seed": 0
+  },
+  "data": {
+    "rooms": 249,
+    "val_rooms": 25,
+    "pool": 46248,
+    "val": 300
+  },
+  "reference": {
+    "teacher_aligned_optimistic": {
+      "AbsRel": 0.11068122833967209,
+      "RMSE": 0.5210463404655457,
+      "delta1": 0.8781642659505209
+    },
+    "constant_depth": {
+      "AbsRel": 0.39257147908210754,
+      "RMSE": 1.346402645111084,
+      "delta1": 0.3526494683159722
+    }
+  },
+  "results": {
+    "2312/gt": {
+      "labeled": 2312,
+      "recipe": "gt",
+      "mean": {
+        "AbsRel": 0.2124495506286621,
+        "RMSE": 0.7588064670562744,
+        "delta1": 0.6303227403428819
+      },
+      "std": {
+        "AbsRel": 0.0,
+        "RMSE": 0.0,
+        "delta1": 0.0
+      },
+      "runs": [
+        {
+          "best": {
+            "AbsRel": 0.2124495506286621,
+            "RMSE": 0.7588064670562744,
+            "delta1": 0.6303227403428819,
+            "scale": 0.9781879782676697,
+            "step": 500
+          },
+          "history": [
+            {
+              "AbsRel": 0.23969048261642456,
+              "RMSE": 0.803057074546814,
+              "delta1": 0.6070995415581598,
+              "scale": 1.0229458808898926,
+              "step": 250
+            },
+            {
+              "AbsRel": 0.2124495506286621,
+              "RMSE": 0.7588064670562744,
+              "delta1": 0.6303227403428819,
+              "scale": 0.9781879782676697,
+              "step": 500
+            }
+          ],
+          "minutes": 0.5637593717499991
+        }
+      ]
+    }
+  },
+  "verdicts": {}
+}

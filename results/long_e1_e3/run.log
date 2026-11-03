@@ -1,0 +1,162 @@
+Device: cuda | 2 recipes x 1 seeds x 30000 steps
+
+[1/3] Data (validation = held-out rooms) and teacher outputs
+  50688 images in 249 rooms -> 25 rooms held out for validation; pool 46248, val 300
+  [pool] 46248 images from cache /content/cache/densedepth_pool46248_val300_seed0/pool
+  [val] 300 images from cache /content/cache/densedepth_pool46248_val300_seed0/val
+
+[2/3] Training: labeled [231, 462, 2312] of 46248 images, recipes ['gt', 'semi']
+  -- E1 gt, 231 labeled, seed 0
+Downloading: "https://download.pytorch.org/models/mobilenet_v3_large-5c1a4163.pth" to /root/.cache/torch/hub/checkpoints/mobilenet_v3_large-5c1a4163.pth
+  0%|          | 0.00/21.1M [00:00<?, ?B/s] 84%|████████▍ | 17.8M/21.1M [00:00<00:00, 185MB/s]100%|██████████| 21.1M/21.1M [00:00<00:00, 189MB/s]
+    ~81 min left for this run
+/content/repo/src/kd_depth/core.py:436: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  x = torch.from_numpy(rgb[i:i + bs]).permute(0, 3, 1, 2).float().div(255).to(device)
+    step  2000  gt 0.251  | val AbsRel 0.233  d1 0.603  scale x1.00
+    step  4000  gt 0.120  | val AbsRel 0.221  d1 0.632  scale x0.98
+    step  6000  gt 0.089  | val AbsRel 0.229  d1 0.626  scale x1.01
+    step  8000  gt 0.070  | val AbsRel 0.221  d1 0.635  scale x0.99
+    step 10000  gt 0.063  | val AbsRel 0.220  d1 0.641  scale x1.00
+    step 12000  gt 0.054  | val AbsRel 0.218  d1 0.635  scale x0.97
+    step 14000  gt 0.050  | val AbsRel 0.225  d1 0.631  scale x1.01
+    step 16000  gt 0.047  | val AbsRel 0.216  d1 0.636  scale x1.00
+    step 18000  gt 0.043  | val AbsRel 0.219  d1 0.635  scale x0.99
+    step 20000  gt 0.041  | val AbsRel 0.214  d1 0.631  scale x0.98
+    step 22000  gt 0.039  | val AbsRel 0.213  d1 0.630  scale x0.97
+    step 24000  gt 0.038  | val AbsRel 0.214  d1 0.632  scale x0.97
+    step 26000  gt 0.037  | val AbsRel 0.214  d1 0.628  scale x0.97
+    step 28000  gt 0.037  | val AbsRel 0.214  d1 0.629  scale x0.96
+    step 30000  gt 0.036  | val AbsRel 0.216  d1 0.635  scale x0.99
+  -- E3 semi, 231 labeled, seed 0
+    ~29 min left for this run
+    step  2000  gt 0.279  teacher 0.811  | val AbsRel 0.245  d1 0.589  scale x1.03
+    step  4000  gt 0.157  teacher 0.484  | val AbsRel 0.213  d1 0.640  scale x1.02
+    step  6000  gt 0.143  teacher 0.405  | val AbsRel 0.197  d1 0.661  scale x0.99
+    step  8000  gt 0.139  teacher 0.358  | val AbsRel 0.188  d1 0.680  scale x0.95
+    step 10000  gt 0.141  teacher 0.323  | val AbsRel 0.203  d1 0.670  scale x1.00
+    step 12000  gt 0.135  teacher 0.298  | val AbsRel 0.194  d1 0.684  scale x1.00
+    step 14000  gt 0.128  teacher 0.280  | val AbsRel 0.193  d1 0.683  scale x1.01
+    step 16000  gt 0.124  teacher 0.267  | val AbsRel 0.197  d1 0.686  scale x1.01
+    step 18000  gt 0.120  teacher 0.252  | val AbsRel 0.193  d1 0.695  scale x0.98
+    step 20000  gt 0.118  teacher 0.242  | val AbsRel 0.193  d1 0.684  scale x1.00
+    step 22000  gt 0.114  teacher 0.232  | val AbsRel 0.202  d1 0.678  scale x1.01
+    step 24000  gt 0.111  teacher 0.224  | val AbsRel 0.197  d1 0.690  scale x1.01
+    step 26000  gt 0.110  teacher 0.220  | val AbsRel 0.198  d1 0.683  scale x1.01
+    step 28000  gt 0.110  teacher 0.216  | val AbsRel 0.197  d1 0.684  scale x1.01
+    step 30000  gt 0.110  teacher 0.216  | val AbsRel 0.200  d1 0.682  scale x1.01
+  -- E1 gt, 462 labeled, seed 0
+    ~24 min left for this run
+    step  2000  gt 0.270  | val AbsRel 0.213  d1 0.627  scale x0.99
+    step  4000  gt 0.138  | val AbsRel 0.196  d1 0.672  scale x0.97
+    step  6000  gt 0.107  | val AbsRel 0.198  d1 0.683  scale x0.99
+    step  8000  gt 0.085  | val AbsRel 0.191  d1 0.692  scale x0.97
+    step 10000  gt 0.072  | val AbsRel 0.198  d1 0.682  scale x0.97
+    step 12000  gt 0.066  | val AbsRel 0.195  d1 0.698  scale x0.99
+    step 14000  gt 0.058  | val AbsRel 0.192  d1 0.698  scale x0.97
+    step 16000  gt 0.055  | val AbsRel 0.193  d1 0.695  scale x0.99
+    step 18000  gt 0.051  | val AbsRel 0.194  d1 0.693  scale x0.99
+    step 20000  gt 0.048  | val AbsRel 0.193  d1 0.694  scale x0.99
+    step 22000  gt 0.046  | val AbsRel 0.193  d1 0.691  scale x0.98
+    step 24000  gt 0.044  | val AbsRel 0.192  d1 0.688  scale x0.97
+    step 26000  gt 0.043  | val AbsRel 0.193  d1 0.690  scale x0.98
+    step 28000  gt 0.043  | val AbsRel 0.193  d1 0.689  scale x0.97
+    step 30000  gt 0.042  | val AbsRel 0.194  d1 0.694  scale x0.98
+  -- E3 semi, 462 labeled, seed 0
+    ~23 min left for this run
+    step  2000  gt 0.299  teacher 0.820  | val AbsRel 0.221  d1 0.619  scale x1.01
+    step  4000  gt 0.174  teacher 0.484  | val AbsRel 0.204  d1 0.667  scale x1.02
+    step  6000  gt 0.162  teacher 0.404  | val AbsRel 0.190  d1 0.692  scale x1.00
+    step  8000  gt 0.159  teacher 0.359  | val AbsRel 0.192  d1 0.685  scale x1.00
+    step 10000  gt 0.160  teacher 0.322  | val AbsRel 0.188  d1 0.711  scale x1.01
+    step 12000  gt 0.154  teacher 0.299  | val AbsRel 0.186  d1 0.685  scale x0.98
+    step 14000  gt 0.147  teacher 0.279  | val AbsRel 0.193  d1 0.700  scale x1.01
+    step 16000  gt 0.141  teacher 0.265  | val AbsRel 0.175  d1 0.716  scale x0.98
+    step 18000  gt 0.135  teacher 0.251  | val AbsRel 0.170  d1 0.726  scale x0.97
+    step 20000  gt 0.131  teacher 0.241  | val AbsRel 0.178  d1 0.724  scale x1.02
+    step 22000  gt 0.129  teacher 0.231  | val AbsRel 0.173  d1 0.734  scale x0.99
+    step 24000  gt 0.124  teacher 0.223  | val AbsRel 0.173  d1 0.727  scale x0.98
+    step 26000  gt 0.122  teacher 0.219  | val AbsRel 0.174  d1 0.723  scale x0.99
+    step 28000  gt 0.122  teacher 0.215  | val AbsRel 0.174  d1 0.726  scale x0.99
+    step 30000  gt 0.122  teacher 0.214  | val AbsRel 0.175  d1 0.727  scale x1.00
+  -- E1 gt, 2312 labeled, seed 0
+    ~28 min left for this run
+    step  2000  gt 0.300  | val AbsRel 0.204  d1 0.661  scale x1.01
+    step  4000  gt 0.178  | val AbsRel 0.187  d1 0.707  scale x1.02
+    step  6000  gt 0.143  | val AbsRel 0.180  d1 0.706  scale x0.99
+    step  8000  gt 0.123  | val AbsRel 0.174  d1 0.735  scale x0.98
+    step 10000  gt 0.107  | val AbsRel 0.170  d1 0.733  scale x0.98
+    step 12000  gt 0.096  | val AbsRel 0.167  d1 0.731  scale x0.96
+    step 14000  gt 0.087  | val AbsRel 0.167  d1 0.748  scale x0.98
+    step 16000  gt 0.081  | val AbsRel 0.166  d1 0.752  scale x0.99
+    step 18000  gt 0.076  | val AbsRel 0.165  d1 0.744  scale x0.96
+    step 20000  gt 0.071  | val AbsRel 0.166  d1 0.757  scale x0.98
+    step 22000  gt 0.068  | val AbsRel 0.165  d1 0.754  scale x0.99
+    step 24000  gt 0.065  | val AbsRel 0.164  d1 0.751  scale x0.97
+    step 26000  gt 0.063  | val AbsRel 0.165  d1 0.751  scale x0.97
+    step 28000  gt 0.062  | val AbsRel 0.165  d1 0.747  scale x0.96
+    step 30000  gt 0.062  | val AbsRel 0.166  d1 0.754  scale x0.99
+  -- E3 semi, 2312 labeled, seed 0
+    ~23 min left for this run
+    step  2000  gt 0.325  teacher 0.835  | val AbsRel 0.221  d1 0.656  scale x1.07
+    step  4000  gt 0.211  teacher 0.498  | val AbsRel 0.183  d1 0.705  scale x0.98
+    step  6000  gt 0.192  teacher 0.410  | val AbsRel 0.191  d1 0.706  scale x1.01
+    step  8000  gt 0.189  teacher 0.362  | val AbsRel 0.175  d1 0.723  scale x0.99
+    step 10000  gt 0.186  teacher 0.329  | val AbsRel 0.172  d1 0.720  scale x0.96
+    step 12000  gt 0.181  teacher 0.302  | val AbsRel 0.187  d1 0.708  scale x1.02
+    step 14000  gt 0.175  teacher 0.282  | val AbsRel 0.179  d1 0.726  scale x1.01
+    step 16000  gt 0.172  teacher 0.268  | val AbsRel 0.163  d1 0.760  scale x0.98
+Device: cuda | 2 recipes x 1 seeds x 30000 steps
+
+[1/3] Data (validation = held-out rooms) and teacher outputs
+  50688 images in 249 rooms -> 25 rooms held out for validation; pool 46248, val 300
+  [pool] 46248 images from cache /content/cache/densedepth_pool46248_val300_seed0/pool
+  [val] 300 images from cache /content/cache/densedepth_pool46248_val300_seed0/val
+
+[2/3] Training: labeled [231, 462, 2312] of 46248 images, recipes ['gt', 'semi']
+  -- E1 gt, 231 labeled, seed 0
+    already finished (from gt_lab231_seed0.done.pt), skipping
+  -- E3 semi, 231 labeled, seed 0
+    already finished (from semi_lab231_seed0.done.pt), skipping
+  -- E1 gt, 462 labeled, seed 0
+    already finished (from gt_lab462_seed0.done.pt), skipping
+  -- E3 semi, 462 labeled, seed 0
+    already finished (from semi_lab462_seed0.done.pt), skipping
+  -- E1 gt, 2312 labeled, seed 0
+    already finished (from gt_lab2312_seed0.done.pt), skipping
+  -- E3 semi, 2312 labeled, seed 0
+Downloading: "https://download.pytorch.org/models/mobilenet_v3_large-5c1a4163.pth" to /root/.cache/torch/hub/checkpoints/mobilenet_v3_large-5c1a4163.pth
+  0%|          | 0.00/21.1M [00:00<?, ?B/s] 98%|█████████▊| 20.8M/21.1M [00:00<00:00, 217MB/s]100%|██████████| 21.1M/21.1M [00:00<00:00, 217MB/s]
+    resuming from step 17000 (semi_lab2312_seed0.pt)
+    ~39 min left for this run
+/content/repo/src/kd_depth/core.py:436: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at /pytorch/torch/csrc/utils/tensor_numpy.cpp:213.)
+  x = torch.from_numpy(rgb[i:i + bs]).permute(0, 3, 1, 2).float().div(255).to(device)
+    step 18000  gt 0.165  teacher 0.254  | val AbsRel 0.169  d1 0.739  scale x0.99
+    step 20000  gt 0.162  teacher 0.242  | val AbsRel 0.169  d1 0.733  scale x0.98
+    step 22000  gt 0.158  teacher 0.232  | val AbsRel 0.169  d1 0.742  scale x0.99
+    step 24000  gt 0.156  teacher 0.223  | val AbsRel 0.165  d1 0.751  scale x0.99
+    step 26000  gt 0.155  teacher 0.219  | val AbsRel 0.168  d1 0.743  scale x0.99
+    step 28000  gt 0.153  teacher 0.215  | val AbsRel 0.168  d1 0.742  scale x0.98
+    step 30000  gt 0.153  teacher 0.213  | val AbsRel 0.166  d1 0.741  scale x0.97
+
+[3/3] Summary
+------------------------------------------------------------------------------
+FEW-LABEL TEST  (validation: 300 images from held-out rooms, best checkpoint)
+------------------------------------------------------------------------------
+Labeled       Recipe            AbsRel    RMSE  d<1.25     vs gt  scale  best@
+231 (0%)      E1 gt              0.213   0.781   0.630            x0.97  22000
+231 (0%)      E3 semi            0.188   0.751   0.680    -11.4%  x0.95   8000
+------------------------------------------------------------------------------
+462 (1%)      E1 gt              0.191   0.690   0.692            x0.97   8000
+462 (1%)      E3 semi            0.170   0.698   0.726    -10.9%  x0.97  18000
+------------------------------------------------------------------------------
+2312 (5%)     E1 gt              0.164   0.631   0.751            x0.97  24000
+2312 (5%)     E3 semi            0.163   0.644   0.760     -0.8%  x0.98  16000
+------------------------------------------------------------------------------
+Reference     constant depth     0.393   1.346   0.353
+Reference     teacher (opt.)     0.111   0.521   0.878
+------------------------------------------------------------------------------
+231 labeled: teacher helps (11% lower AbsRel, d1 +0.050)
+462 labeled: teacher helps (11% lower AbsRel, d1 +0.033)
+2312 labeled: no clear difference (< 3%)
+Note: one seed only. Differences below ~3% may be noise; use --seeds 0,1,2 to check.
+Saved: /content/drive/MyDrive/Colab Notebooks/kd_depth/results/long_e1_e3/report.json and /content/drive/MyDrive/Colab Notebooks/kd_depth/results/long_e1_e3/examples.png

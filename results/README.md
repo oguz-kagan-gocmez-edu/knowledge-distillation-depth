@@ -4,7 +4,8 @@ Each folder has `report.json` (full config + metrics), `examples.png`, and `run.
 console output was saved. From now on `report.json` also records the git commit under `"run"`.
 
 Validation = 300 images from 25 held-out rooms (feasibility: 200 random images, not split by room).
-The 654 test images have not been used yet. All runs: Depth Anything V2 Small teacher, Apple M4 Pro (MPS).
+The 654 test images have not been used yet. All runs: Depth Anything V2 Small teacher. Runs up to `fewlabel_v2_base` were made on an Apple M4 Pro (MPS);
+`timing_test` and later ran on a Colab L4 GPU.
 
 | Folder | Script | Setting | Recipe | AbsRel ↓ | RMSE ↓ | δ<1.25 ↑ |
 |---|---|---|---|---|---|---|
@@ -26,4 +27,18 @@ The 654 test images have not been used yet. All runs: Depth Anything V2 Small te
 | `fewlabel_v2_base` | `fewlabel_v2.py` | 250 / 5,000, base (~4M) | E1 gt | 0.208 | 0.764 | 0.620 |
 | | | | E3 semi | 0.202 | 0.740 | 0.670 |
 
-These runs were made before the project used git, so their reports have no commit hash.
+| `timing_test` | `fewlabel_v2.py` | 2,312 / 46,248 labeled (5%), 500 steps, small (speed check only) | E1 gt | 0.212 | 0.759 | 0.630 |
+| `long_e1_e3` | `fewlabel_v2.py` | 231 / 46,248 (0.5%), 30k steps, small | E1 gt | 0.213 | 0.781 | 0.630 |
+| | | | E3 semi | 0.188 | 0.751 | 0.680 |
+| | | 462 / 46,248 (1%), 30k steps, small | E1 gt | 0.191 | 0.690 | 0.692 |
+| | | | E3 semi | 0.170 | 0.698 | 0.726 |
+| | | 2,312 / 46,248 (5%), 30k steps, small | E1 gt | 0.164 | 0.631 | 0.751 |
+| | | | E3 semi | 0.163 | 0.644 | 0.760 |
+
+Runs up to `fewlabel_v2_base` were made before the project used git, so their reports have no commit hash.
+`timing_test` records commit `0e01ce5`, which became `393908b` when the history was rewritten (same code).
+
+`long_e1_e3` (one seed, best checkpoint on validation): the teacher lowers AbsRel by ~11% at 0.5% and 1%
+labels, but at 5% the two recipes are the same within noise. With few labels E1 memorizes its images
+(training SILog falls to ~0.04 while validation stops improving); E3 does not. E3's RMSE is not better
+at 1% and 5%. The session disconnected once during E3 at 5% and resumed from the step-17,000 checkpoint.
