@@ -397,12 +397,15 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
             print(f"stopped after step {step} (--stop-after); run again to resume")
             raise SystemExit(0)
 
+    final_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
     model.load_state_dict(best_state)
     preds = fz.predict(model, val["rgb"], device)
     seconds = spent + time.perf_counter() - t_start
     if done is not None:
+        # keep both models so they can be evaluated on the test set later
         _save({"signature": sig, "best": best, "history": hist, "seconds": seconds,
-               "preds": preds.astype(np.float16)}, done)
+               "preds": preds.astype(np.float16), "best_state": best_state,
+               "final_state": final_state}, done)
         ckpt.unlink(missing_ok=True)
     return best, hist, preds, seconds
 

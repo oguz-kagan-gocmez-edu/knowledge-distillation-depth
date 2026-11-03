@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "fewlabel_v2.py"
@@ -55,6 +56,8 @@ def test_finished_runs_are_skipped(tmp_path):
     run(tmp_path, "--out", str(tmp_path / "c"), "--ckpt-dir", str(tmp_path / "ck"))
     a, c = results(tmp_path / "a"), results(tmp_path / "c")
     assert all(a[k]["mean"] == c[k]["mean"] for k in a)
+    done = torch.load(tmp_path / "ck" / "gt_lab8_seed0.done.pt", weights_only=False)
+    assert done["best_state"].keys() == done["final_state"].keys()      # weights kept for the test set
 
 
 def test_teacher_file_is_reused(tmp_path):
