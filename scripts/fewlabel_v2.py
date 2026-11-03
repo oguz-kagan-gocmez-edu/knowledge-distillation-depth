@@ -120,6 +120,25 @@ def iter_rows(rows, read, resolve):
         yield rgb, depth
 
 
+def cache_dirs(root, tag, n_pool, n_val, seed):
+    """Folders for the pool and validation caches.
+
+    The pool does not depend on the validation size, so changing --n-val keeps the pool's
+    teacher outputs. Folders from the older layout (<tag>_pool<N>_val<M>_seed<S>/{pool,val})
+    are still used when they exist; meta.json checks that they hold the same images.
+    """
+    base = root / f"{tag}_pool{n_pool}_seed{seed}"
+    pool, val = base / "pool", base / f"val{n_val}"
+    if not pool.exists():
+        legacy = sorted(root.glob(f"{tag}_pool{n_pool}_val*_seed{seed}/pool"))
+        if legacy:
+            pool = legacy[0]
+    legacy_val = root / f"{tag}_pool{n_pool}_val{n_val}_seed{seed}" / "val"
+    if not val.exists() and legacy_val.exists():
+        val = legacy_val
+    return pool, val
+
+
 def build_data(args, device):
     """Pool (labeled + unlabeled training images) and validation set, with teacher outputs.
 
@@ -171,12 +190,14 @@ def build_data(args, device):
         val_src = lambda: iter_rows(val_rows, read, resolve)
         pool_key, val_key = poolcache.list_hash(pool_rows), poolcache.list_hash(val_rows)
 
-    cdir = Path(args.cache_dir) / f"{tag}_pool{n_pool}_val{n_val}_seed{args.seed}"
-    if args.no_cache and cdir.exists():
-        shutil.rmtree(cdir)
-    pool = poolcache.build(cdir / "pool", n_pool, pool_src, pool_key, make_teacher, args.teacher,
+    pool_dir, val_dir = cache_dirs(Path(args.cache_dir), tag, n_pool, n_val, args.seed)
+    if args.no_cache:
+        for d in (pool_dir, val_dir):
+            if d.exists():
+                shutil.rmtree(d)
+    pool = poolcache.build(pool_dir, n_pool, pool_src, pool_key, make_teacher, args.teacher,
                            args.teacher_batch, "pool")
-    val = poolcache.build(cdir / "val", n_val, val_src, val_key, make_teacher, args.teacher,
+    val = poolcache.build(val_dir, n_val, val_src, val_key, make_teacher, args.teacher,
                           args.teacher_batch, "val")
     val = {k: np.asarray(v) for k, v in val.items()}           # small: keep in RAM
     loaded.clear()                                             # free the teacher's memory
@@ -225,6 +246,15 @@ def scale_ratio(preds, gts):
 # ----------------------------------------------------------------------------
 # Training one (recipe, label budget, seed)
 # ----------------------------------------------------------------------------
+METRICS = ("AbsRel", "RMSE", "delta1", "delta2", "delta3", "log10")
+
+
+def aggregate(f, metrics):
+    """f (mean or std) over runs, per metric. Runs finished with older code have fewer metrics."""
+    keys = [k for k in METRICS if all(k in m for m in metrics)]
+    return {k: float(f([m[k] for m in metrics])) for k in keys}
+
+
 def run_name(recipe, n_lab, seed):
     return f"{recipe}_lab{n_lab}_seed{seed}"
 
@@ -397,7 +427,7 @@ def main():
                     help="training images (labeled + unlabeled); -1 = all training images")
     ap.add_argument("--labeled", default="250",
                     help="labeled images: count or percent of the pool (250, 5%%); comma list = sweep")
-    ap.add_argument("--n-val", type=int, default=300)
+    ap.add_argument("--n-val", type=int, default=1000)   # runs before Nov 2026 used 300
     ap.add_argument("--val-scene-frac", type=float, default=0.1)
     ap.add_argument("--recipes", default="gt,gt_t,semi,semi_edge")
     ap.add_argument("--seeds", default="0", help="comma list; >1 seed gives mean +- std")
@@ -477,20 +507,22 @@ def main():
                 runs.append({"best": best, "history": hist, "minutes": secs / 60})
                 if n_lab == budgets[0] and seed == seeds[0]:
                     fig_preds[recipe] = preds
-            keys = ("AbsRel", "RMSE", "delta1")
-            mean = {k: float(np.mean([r["best"][k] for r in runs])) for k in keys}
-            std = {k: float(np.std([r["best"][k] for r in runs])) for k in keys}
-            results[f"{n_lab}/{recipe}"] = {"labeled": n_lab, "recipe": recipe, "mean": mean,
-                                            "std": std, "runs": runs}
+            best_m = [r["best"] for r in runs]
+            last_m = [r["history"][-1] for r in runs]      # final step, no checkpoint selection
+            results[f"{n_lab}/{recipe}"] = {
+                "labeled": n_lab, "recipe": recipe,
+                "mean": aggregate(np.mean, best_m), "std": aggregate(np.std, best_m),
+                "mean_last": aggregate(np.mean, last_m), "std_last": aggregate(np.std, last_m),
+                "runs": runs}
 
     # ---- summary ------------------------------------------------------------
     print("\n[3/3] Summary")
-    line = "-" * 78
+    line = "-" * 86
     n_pool = len(pool["rgb"])
     print(f"{line}\nFEW-LABEL TEST  (validation: {len(val['rgb'])} images from held-out rooms, "
-          f"best checkpoint)\n{line}")
+          f"best checkpoint; last = AbsRel at the final step)\n{line}")
     print(f"{'Labeled':<14}{'Recipe':<16}{'AbsRel':>8}{'RMSE':>8}{'d<1.25':>8}"
-          f"{'vs gt':>10}{'scale':>7}{'best@':>7}")
+          f"{'vs gt':>10}{'scale':>7}{'best@':>7}{'last':>8}")
     verdicts = {}
     for n_lab in budgets:
         g = results.get(f"{n_lab}/gt")
@@ -503,9 +535,10 @@ def main():
             step = r["runs"][0]["best"]["step"]
             scale = f"x{r['runs'][0]['best']['scale']:.2f}"
             sd = f" ±{r['std']['AbsRel']:.3f}" if len(seeds) > 1 else ""
-            label = f"{n_lab} ({n_lab / n_pool:.0%})"
+            label = f"{n_lab} ({100 * n_lab / n_pool:.3g}%)"
+            last = f"{r['mean_last']['AbsRel']:.3f}"
             print(f"{label:<14}{RECIPES[recipe]['exp'] + ' ' + recipe:<16}{m['AbsRel']:>8.3f}"
-                  f"{m['RMSE']:>8.3f}{m['delta1']:>8.3f}{rel:>10}{scale:>7}{step:>7}{sd}")
+                  f"{m['RMSE']:>8.3f}{m['delta1']:>8.3f}{rel:>10}{scale:>7}{step:>7}{last:>8}{sd}")
         if g:
             others = [results[f"{n_lab}/{r}"]["mean"] for r in recipes if r != "gt"]
             if others:

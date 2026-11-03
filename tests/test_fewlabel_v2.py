@@ -69,3 +69,26 @@ def test_teacher_file_is_reused(tmp_path):
     assert (pool / "disp_small.npy").stat().st_mtime_ns == disp_mtime   # teacher not run again
     a, b = results(tmp_path / "a"), results(tmp_path / "b")
     assert all(a[k]["runs"][0]["history"] == b[k]["runs"][0]["history"] for k in a)
+
+
+def test_changing_val_size_keeps_pool_teacher(tmp_path):
+    run(tmp_path, "--out", str(tmp_path / "a"))
+    pool = tmp_path / "cache" / "dummy_pool32_seed0" / "pool"
+    disp_mtime = (pool / "disp_small.npy").stat().st_mtime_ns
+    run(tmp_path, "--out", str(tmp_path / "b"), "--n-val", "24")
+    assert (pool / "disp_small.npy").stat().st_mtime_ns == disp_mtime
+    assert (tmp_path / "cache" / "dummy_pool32_seed0" / "val24" / "disp_small.npy").exists()
+
+
+def test_old_cache_layout_is_still_used(tmp_path):
+    run(tmp_path, "--out", str(tmp_path / "a"))
+    new = tmp_path / "cache" / "dummy_pool32_seed0"
+    old = tmp_path / "cache" / "dummy_pool32_val16_seed0"
+    old.mkdir()
+    (new / "pool").rename(old / "pool")
+    (new / "val16").rename(old / "val")
+    new.rmdir()
+    run(tmp_path, "--out", str(tmp_path / "b"))
+    assert not new.exists()                      # nothing rebuilt in the new layout
+    a, b = results(tmp_path / "a"), results(tmp_path / "b")
+    assert all(a[k]["runs"][0]["history"] == b[k]["runs"][0]["history"] for k in a)
