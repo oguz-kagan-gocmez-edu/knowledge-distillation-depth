@@ -27,7 +27,7 @@ At ~0.07 s/step a 63k-step run takes ~75 min (the base student takes longer).
 |---|---|---|---|---|
 | `main_1_5` | E1 vs E4 at 1% and 5%, seeds 0,1,2 | 12 | 15 | done (`results/main_1_5`) |
 | `main_1_5` + `RERUN_WITHOUT_WEIGHTS` | the 4 runs that kept no weights (E1 1% seeds 0–2, E4 1% seed 0) | 4 | 5 | done |
-| `fix_1_short` | E4 at 1%, 24k steps | 3 | 1.5 | to do |
+| `fix_1_short` | E1 vs E4 at 1%, 24k steps (E4 first, E1 added after) | 6 | 2.5 | E4 done, E1 to do |
 | `fix_1_decay` | E4 at 1%, teacher weight falls to 0 over the second half (`--teacher-decay 0.5`) | 3 | 4 | to do |
 | `subsets_1_k1`, `subsets_1_k2` | E1 vs E4 at 1% on two other labeled subsets (`--label-subset`) | 4 | 5 | to do |
 | `ablation_1_5` | E2, E3 at 1% and 5% | 4 | 5 | to do |
@@ -38,6 +38,9 @@ At ~0.07 s/step a 63k-step run takes ~75 min (the base student takes longer).
 seed, but two seeds then got worse (final 0.199 and 0.212) while the predicted scale drifted.
 `fix_1` checks whether lowering the teacher weight late in training, or stopping earlier, keeps
 the gain until the end. If one of them works, the remaining groups use it.
+E4 at 24k steps (first result): best 0.176 / RMSE 0.705 / δ1 0.725, final step 0.181 ± 0.003, with
+no late degradation on any seed. E1 is also run at 24k steps, so the comparison uses the same
+schedule for both recipes.
 
 **Why `subsets_1`:** the three seeds of `main_1_5` share the same labeled images, so their spread
 only measures training noise. Other subsets show how much the choice of labeled images matters.
