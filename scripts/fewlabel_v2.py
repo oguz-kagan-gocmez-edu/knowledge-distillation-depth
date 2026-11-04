@@ -64,7 +64,7 @@ RECIPES = {
 # ----------------------------------------------------------------------------
 # Data: scene-based split of the DenseDepth training set
 # ----------------------------------------------------------------------------
-def open_densedepth(path):
+def open_densedepth(path, csv_file="nyu2_train.csv"):
     path = Path(path).expanduser()
     if path.is_dir():
         names = {p.relative_to(path).as_posix() for p in path.rglob("*") if p.is_file()}
@@ -75,10 +75,9 @@ def open_densedepth(path):
         read = z.read
     else:
         raise SystemExit(f"--data: {path} does not exist")
-    csvs = sorted((nm for nm in names if nm.endswith("nyu2_train.csv") and "__MACOSX" not in nm),
-                  key=len)
+    csvs = sorted((nm for nm in names if nm.endswith(csv_file) and "__MACOSX" not in nm), key=len)
     if not csvs:
-        raise SystemExit(f"nyu2_train.csv not found inside {path}")
+        raise SystemExit(f"{csv_file} not found inside {path}")
     csv_name = csvs[0]
     rows = [r[:2] for r in csv.reader(io.StringIO(read(csv_name).decode("utf-8"))) if len(r) >= 2]
     cut = csv_name.rfind("data/")
@@ -263,8 +262,29 @@ def run_signature(recipe, n_lab, seed, n_pool, args):
     """Everything that changes a run's result: a checkpoint is only resumed if this matches."""
     keys = ("student", "teacher", "steps", "eval_every", "batch_size", "lr", "lambda_t",
             "lambda_e", "ramp", "clip", "no_pretrained", "data", "n_val", "val_scene_frac", "seed")
-    return {"recipe": recipe, "n_lab": n_lab, "train_seed": seed, "n_pool": n_pool,
-            **{k: getattr(args, k) for k in keys}}
+    sig = {"recipe": recipe, "n_lab": n_lab, "train_seed": seed, "n_pool": n_pool,
+           **{k: getattr(args, k) for k in keys}}
+    for k in ("teacher_decay", "label_subset"):          # added later: only stored when used,
+        if getattr(args, k, 0):                          # so older checkpoints still resume
+            sig[k] = getattr(args, k)
+    return sig
+
+
+def labeled_indices(n_lab, n_pool, subset):
+    """Pool positions of the labeled images. Subsets are nested: 1% is inside 5% for the same k."""
+    if subset == 0:
+        return torch.arange(n_lab)
+    order = np.random.RandomState(subset).permutation(n_pool)
+    return torch.from_numpy(order[:n_lab].copy())
+
+
+def teacher_weight(step, steps, ramp, decay):
+    """Ramps up over the first `ramp` of training, stays at 1, then falls linearly to 0
+    over the last `decay` of training."""
+    w = min(1.0, step / (ramp * steps)) if ramp > 0 else 1.0
+    if decay > 0:
+        w *= min(1.0, max(0.0, (steps - step) / (decay * steps)))
+    return w
 
 
 def _rng_states():
@@ -314,6 +334,7 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps,
                                                 pct_start=max(0.1, 3 / args.steps))
     rgb, depth, disp = pool["rgb"], pool["depth"], pool["disp"]   # numpy, maybe memory-mapped
+    lab = labeled_indices(n_lab, n_pool, args.label_subset)
 
     best, best_state, hist, logs = None, None, [], {"gt": [], "teacher": [], "edge": []}
     start, spent = 1, 0.0
@@ -341,11 +362,11 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         model.train()
         if cfg["pool"] == "all":                       # half labeled, half from all images
             n_l = bs // 2
-            idx = torch.cat([torch.randint(0, n_lab, (n_l,), generator=gen),
+            idx = torch.cat([lab[torch.randint(0, n_lab, (n_l,), generator=gen)],
                              torch.randint(0, n_pool, (bs - n_l,), generator=gen)])
             is_lab = torch.arange(bs) < n_l
         else:
-            idx = torch.randint(0, n_lab, (bs,), generator=gen)
+            idx = lab[torch.randint(0, n_lab, (bs,), generator=gen)]
             is_lab = torch.ones(bs, dtype=torch.bool)
         ii = idx.numpy()
         x = torch.from_numpy(rgb[ii]).permute(0, 3, 1, 2).float().div(255)
@@ -360,7 +381,7 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         loss = l_gt
         if cfg["teacher"]:
             # ramp-up: the student first learns real depth, then the teacher term grows
-            ramp = min(1.0, step / (args.ramp * args.steps)) if args.ramp > 0 else 1.0
+            ramp = teacher_weight(step, args.steps, args.ramp, args.teacher_decay)
             l_t, l_e = teacher_terms(pred, t, cfg["edge"])
             loss = loss + ramp * args.lambda_t * l_t
             logs["teacher"].append(l_t.item())
@@ -446,6 +467,11 @@ def main():
     ap.add_argument("--ramp", type=float, default=0.3,
                     help="fraction of steps over which the teacher weight grows from 0 (0 = off)")
     ap.add_argument("--clip", type=float, default=1.0, help="gradient-norm clipping (0 = off)")
+    ap.add_argument("--teacher-decay", type=float, default=0.0,
+                    help="fraction of steps at the end over which the teacher weight falls to 0 (0 = off)")
+    ap.add_argument("--label-subset", type=int, default=0,
+                    help="which images are labeled: 0 = first N of the pool (default), "
+                         "k > 0 = first N of a random order seeded by k")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/fewlabel_v2")
     ap.add_argument("--cache-dir", default="cache",
@@ -520,12 +546,12 @@ def main():
 
     # ---- summary ------------------------------------------------------------
     print("\n[3/3] Summary")
-    line = "-" * 86
+    line = "-" * 93
     n_pool = len(pool["rgb"])
     print(f"{line}\nFEW-LABEL TEST  (validation: {len(val['rgb'])} images from held-out rooms, "
           f"best checkpoint; last = AbsRel at the final step)\n{line}")
     print(f"{'Labeled':<14}{'Recipe':<16}{'AbsRel':>8}{'RMSE':>8}{'d<1.25':>8}"
-          f"{'vs gt':>10}{'scale':>7}{'best@':>7}{'last':>8}")
+          f"{'vs gt':>10}{'scale':>7}{'best@':>7}{'last':>15}")
     verdicts = {}
     for n_lab in budgets:
         g = results.get(f"{n_lab}/gt")
@@ -537,11 +563,13 @@ def main():
                 rel = f"{(m['AbsRel'] - g['mean']['AbsRel']) / g['mean']['AbsRel']:+.1%}"
             step = r["runs"][0]["best"]["step"]
             scale = f"x{r['runs'][0]['best']['scale']:.2f}"
-            sd = f" ±{r['std']['AbsRel']:.3f}" if len(seeds) > 1 else ""
+            sd = f"  (best ±{r['std']['AbsRel']:.3f})" if len(seeds) > 1 else ""
             label = f"{n_lab} ({100 * n_lab / n_pool:.3g}%)"
             last = f"{r['mean_last']['AbsRel']:.3f}"
+            if len(seeds) > 1:
+                last += f" ±{r['std_last']['AbsRel']:.3f}"
             print(f"{label:<14}{RECIPES[recipe]['exp'] + ' ' + recipe:<16}{m['AbsRel']:>8.3f}"
-                  f"{m['RMSE']:>8.3f}{m['delta1']:>8.3f}{rel:>10}{scale:>7}{step:>7}{last:>8}{sd}")
+                  f"{m['RMSE']:>8.3f}{m['delta1']:>8.3f}{rel:>10}{scale:>7}{step:>7}{last:>15}{sd}")
         if g:
             others = [results[f"{n_lab}/{r}"]["mean"] for r in recipes if r != "gt"]
             if others:

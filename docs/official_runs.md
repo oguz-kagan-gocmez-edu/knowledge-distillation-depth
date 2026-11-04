@@ -12,47 +12,50 @@ distillation helps and where it stops helping.
   300, and its numbers moved by ±0.01 between evaluations.
 - 63,000 steps, evaluation every 3,000 steps, checkpoint every 1,000.
 - Every report has the best checkpoint (`mean`) and the final step (`mean_last`), with AbsRel,
-  RMSE, δ1–δ3 and log10. The report uses the final step as the main number, so that picking
-  a checkpoint on validation does not make the numbers look better.
-- The 654-image test set is used once, at the end, on the final models.
+  RMSE, δ1–δ3 and log10.
+- Model selection: the best checkpoint on validation is the main model (early stopping), and
+  the final-step model is reported next to it. Both are kept in `.done.pt` since PR #10.
+- The 654-image test set is used once, at the end, on both models. Validation numbers are only
+  used to compare recipes and pick checkpoints.
 
 ## Runs (Colab L4, one notebook run per group)
 
-At ~0.07 s/step, one run takes ~75 min (the base student takes longer).
+Each group is a preset in `notebooks/colab_run.ipynb`: set `RUN_NAME` to it and **Run all**.
+At ~0.07 s/step a 63k-step run takes ~75 min (the base student takes longer).
 
-| Group (`RUN_NAME`) | Experiment | Runs | ~Hours |
-|---|---|---|---|
-| `main_1_5` | E1 vs E4 at 1% and 5%, seeds 0,1,2 | 12 | 15 |
-| `ablation_1_5` | E2, E3 at 1% and 5%, seed 0 | 4 | 5 |
-| `budgets_25_100` | E5: E1 vs E4 at 25% and 100%, seed 0 | 4 | 5 |
-| `students_1` | E6: tiny and base students, E1 vs E4 at 1%, seed 0 | 4 | 6 |
-| **Total** | | **24** | **~31** (≈ 60 compute units) |
+| `RUN_NAME` | What | Runs | ~Hours | Status |
+|---|---|---|---|---|
+| `main_1_5` | E1 vs E4 at 1% and 5%, seeds 0,1,2 | 12 | 15 | done (`results/main_1_5`) |
+| `main_1_5` + `RERUN_WITHOUT_WEIGHTS` | the 4 runs that kept no weights (E1 1% seeds 0–2, E4 1% seed 0) | 4 | 5 | to do |
+| `fix_1_decay` | E4 at 1%, teacher weight falls to 0 over the second half (`--teacher-decay 0.5`) | 3 | 4 | to do |
+| `fix_1_short` | E4 at 1%, 24k steps | 3 | 1.5 | to do |
+| `subsets_1_k1`, `subsets_1_k2` | E1 vs E4 at 1% on two other labeled subsets (`--label-subset`) | 4 | 5 | to do |
+| `ablation_1_5` | E2, E3 at 1% and 5% | 4 | 5 | to do |
+| `budgets_25_100` | E5: E1 vs E4 at 25% and 100% | 4 | 5 | to do |
+| `students_1_tiny`, `students_1_base` | E6: E1 vs E4 at 1% with ~1M and ~4M students | 4 | 6 | to do |
 
-E5's 1% and 5% points come from `main_1_5`. E6 runs at 1% because at 5% the teacher made
-no difference in the pilot.
+**Why `fix_1`:** in `main_1_5`, E4 at 1% reached 0.181–0.184 AbsRel by 12k–45k steps on every
+seed, but two seeds then got worse (final 0.199 and 0.212) while the predicted scale drifted.
+`fix_1` checks whether lowering the teacher weight late in training, or stopping earlier, keeps
+the gain until the end. If one of them works, the remaining groups use it.
 
-`ARGS` for each group (the common part first):
+**Why `subsets_1`:** the three seeds of `main_1_5` share the same labeled images, so their spread
+only measures training noise. Other subsets show how much the choice of labeled images matters.
 
-```python
-COMMON = "--pool -1 --n-val 1000 --steps 63000 --eval-every 3000"
-ARGS = f"{COMMON} --labeled 1%,5% --recipes gt,semi_edge --seeds 0,1,2"          # main_1_5
-ARGS = f"{COMMON} --labeled 1%,5% --recipes gt_t,semi"                           # ablation_1_5
-ARGS = f"{COMMON} --labeled 25%,100% --recipes gt,semi_edge"                     # budgets_25_100
-ARGS = f"{COMMON} --labeled 1% --recipes gt,semi_edge --student tiny"            # students_1 (part 1)
-ARGS = f"{COMMON} --labeled 1% --recipes gt,semi_edge --student base"            # students_1 (part 2)
-```
+## Test set
 
-For E6, run the two student sizes with different `RUN_NAME`s (`students_1_tiny`,
-`students_1_base`), because a report holds one student size.
+At the end, set `RUN_NAME = None` and `EVAL_RUNS` to the groups for the report, then **Run all**.
+`scripts/evaluate_test.py` evaluates the best and the final model of every run on the 654 test
+images (Eigen crop, 10 m cap). It reports raw metrics, metrics after median scaling (structure
+only) and AbsRel/RMSE by distance (< 3 m, 3–6 m, > 6 m).
 
 ## Order
 
-1. `main_1_5`: the main result. It takes ~15 h, so expect at least one disconnect.
-   **Run all** resumes from the last checkpoint.
-2. `ablation_1_5`
-3. `budgets_25_100`
-4. `students_1_tiny`, `students_1_base`
-5. Test-set evaluation of the final models.
+1. `main_1_5` with `RERUN_WITHOUT_WEIGHTS = True`
+2. `fix_1_short`, then `fix_1_decay`
+3. `subsets_1_k1`, `subsets_1_k2`
+4. `ablation_1_5`, `budgets_25_100`, `students_1_tiny`, `students_1_base` (with the `fix_1` setting if it helps)
+5. Test set
 
 After each group: copy `results/<RUN_NAME>/` from Drive into the repo, open a PR,
-and add the summary to the group's experiment issue.
+and add the summary to the group's experiment issue. Keep `checkpoints/` on Drive.
