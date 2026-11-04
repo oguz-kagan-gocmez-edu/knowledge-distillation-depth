@@ -22,6 +22,7 @@ src/kd_depth/        shared code: data, teacher, Student model, losses, metrics,
 scripts/             experiment entry points
   feasibility.py       full-label feasibility test (+ speed / FLOPs / compute estimates)
   fewlabel_v2.py       few-label experiments E1–E4 (current)
+  evaluate_test.py     finished runs on the 654-image test set
   fewlabel_v1.py       first version, kept for reproducibility
 notebooks/           colab_run.ipynb: long runs on a Colab GPU, with checkpoints on Drive
 tests/               unit tests (resume, cache reuse, label budgets)
@@ -53,6 +54,7 @@ python scripts/fewlabel_v2.py --quick                # ~3 min on real data
 python scripts/fewlabel_v2.py                        # E1–E4 at 5% labels, ~40 min (M4 Pro)
 python scripts/fewlabel_v2.py --labeled 1%,5%,25%,100% --recipes gt,semi_edge --out results/sweep
 python scripts/fewlabel_v2.py --pool -1 --labeled 5% --ckpt-dir checkpoints/full   # all ~45K images
+python scripts/evaluate_test.py --ckpt-dir checkpoints/full --out results/test_full  # test set
 python scripts/feasibility.py --source densedepth --data-zip data/nyu_data
 ```
 
