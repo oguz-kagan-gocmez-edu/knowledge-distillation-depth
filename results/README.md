@@ -41,6 +41,10 @@ The 654 test images have not been used yet. All runs: Depth Anything V2 Small te
 | | | | E4 semi_edge | 0.166 | 0.672 | 0.744 |
 | `fix_1_short` | `fewlabel_v2.py` | 462 / 46,248 (1%), **24k steps**, val 1,000, seeds 0,1,2 (mean) | E1 gt | 0.199 | 0.712 | 0.676 |
 | | | | E4 semi_edge | 0.176 | 0.705 | 0.725 |
+| `main_5_short` | `fewlabel_v2.py` | 2,312 / 46,248 (5%), 24k steps, val 1,000, seeds 0,1,2 (mean) | E1 gt | 0.166 | 0.635 | 0.744 |
+| | | | E4 semi_edge | 0.170 | 0.675 | 0.736 |
+| `subsets_1_k1` | `fewlabel_v2.py` | 462 / 46,248 (1%), other labeled subset (`--label-subset 1`), 24k steps, seed 0 | E1 gt | 0.202 | 0.738 | 0.657 |
+| | | | E4 semi_edge | 0.180 | 0.718 | 0.723 |
 
 `main_1_5` is the first official run group (see `docs/official_runs.md`). Its validation set has 1,000 images,
 so its numbers are not comparable with the 300-image runs above. Final-step AbsRel (mean ± std over seeds):
@@ -55,6 +59,13 @@ final 0.199 → 0.191). `run.log` has both. All 12 runs now have their best and 
 `fix_1_short` trains for 24k instead of 63k steps. Final-step AbsRel: E1 0.200 ± 0.001, E4 0.181 ± 0.003
 (0.179 / 0.185 / 0.178). E1 is the same as at 63k, while E4 no longer degrades late: the teacher lowers
 AbsRel by 11.2% at the best checkpoint and 9.5% at the final step. The remaining groups use 24k steps.
+
+`main_5_short` (5%, 24k steps): final-step AbsRel E1 0.166 ± 0.001, E4 0.172 ± 0.000. As at 63k steps, the
+teacher does not help at 5% (+2.5% AbsRel, 6% worse RMSE), so this is not caused by late degradation.
+E4 fits the labels less (training SILog 0.165 vs 0.067 for E1).
+
+`subsets_1_k1` (1%, another set of 462 labeled images, one seed): the teacher lowers AbsRel by 11.1%
+(0.202 → 0.180, final step the same), the same gain as on the main subset (11.2%).
 
 Runs up to `fewlabel_v2_base` were made before the project used git, so their reports have no commit hash.
 `timing_test` records commit `0e01ce5`, which became `393908b` when the history was rewritten (same code).
