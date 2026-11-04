@@ -21,26 +21,33 @@ distillation helps and where it stops helping.
 ## Runs (Colab L4, one notebook run per group)
 
 Each group is a preset in `notebooks/colab_run.ipynb`: set `RUN_NAME` to it and **Run all**.
-At ~0.07 s/step a 63k-step run takes ~75 min (the base student takes longer).
+From `main_5_short` on, every group uses **24k steps** (see "Why `fix_1`" below). At ~0.07 s/step
+a 24k-step E4 run takes ~30 min and an E1 run ~20 min (the base student takes longer). Two
+notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sessions.
 
-| `RUN_NAME` | What | Runs | ~Hours | Status |
-|---|---|---|---|---|
-| `main_1_5` | E1 vs E4 at 1% and 5%, seeds 0,1,2 | 12 | 15 | done (`results/main_1_5`) |
-| `main_1_5` + `RERUN_WITHOUT_WEIGHTS` | the 4 runs that kept no weights (E1 1% seeds 0–2, E4 1% seed 0) | 4 | 5 | done |
-| `fix_1_short` | E1 vs E4 at 1%, 24k steps (E4 first, E1 added after) | 6 | 2.5 | E4 done, E1 to do |
-| `fix_1_decay` | E4 at 1%, teacher weight falls to 0 over the second half (`--teacher-decay 0.5`) | 3 | 4 | to do |
-| `subsets_1_k1`, `subsets_1_k2` | E1 vs E4 at 1% on two other labeled subsets (`--label-subset`) | 4 | 5 | to do |
-| `ablation_1_5` | E2, E3 at 1% and 5% | 4 | 5 | to do |
-| `budgets_25_100` | E5: E1 vs E4 at 25% and 100% | 4 | 5 | to do |
-| `students_1_tiny`, `students_1_base` | E6: E1 vs E4 at 1% with ~1M and ~4M students | 4 | 6 | to do |
+| `RUN_NAME` | What | Steps | Runs | ~Hours | Status |
+|---|---|---|---|---|---|
+| `main_1_5` | E1 vs E4 at 1% and 5%, seeds 0,1,2 (4 runs rerun to keep weights) | 63k | 12 | 15 | done (`results/main_1_5`) |
+| `fix_1_short` | E1 vs E4 at 1%, seeds 0,1,2 | 24k | 6 | 2.5 | done |
+| `main_5_short` | E1 vs E4 at 5%, seeds 0,1,2 (same schedule as `fix_1_short`) | 24k | 6 | 2.5 | to do |
+| `subsets_1_k1`, `subsets_1_k2` | E1 vs E4 at 1% on two other labeled subsets (`--label-subset`) | 24k | 4 | 2 | to do |
+| `ablation_1_5` | E2, E3 at 1% and 5% | 24k | 4 | 2 | to do |
+| `budgets_25_100` | E5: E1 vs E4 at 25% and 100% | 24k | 4 | 2 | to do |
+| `students_1_tiny`, `students_1_base` | E6: E1 vs E4 at 1% with ~1M and ~4M students | 24k | 4 | 2.5 | to do |
+| `fix_1_decay` | optional: E4 at 1%, teacher weight falls to 0 over the second half | 63k | 3 | 4 | optional |
+
+The main table of the report uses `fix_1_short` (1%) and `main_5_short` (5%). `main_1_5` stays in
+the report as the long-training result that shows the late degradation.
 
 **Why `fix_1`:** in `main_1_5`, E4 at 1% reached 0.181–0.184 AbsRel by 12k–45k steps on every
 seed, but two seeds then got worse (final 0.199 and 0.212) while the predicted scale drifted.
 `fix_1` checks whether lowering the teacher weight late in training, or stopping earlier, keeps
 the gain until the end. If one of them works, the remaining groups use it.
-E4 at 24k steps (first result): best 0.176 / RMSE 0.705 / δ1 0.725, final step 0.181 ± 0.003, with
-no late degradation on any seed. E1 is also run at 24k steps, so the comparison uses the same
-schedule for both recipes.
+Result (`fix_1_short`, 3 seeds): E1 at 24k is the same as at 63k (best 0.199, final 0.200 ± 0.001),
+while E4 at 24k gives best 0.176 / RMSE 0.705 / δ1 0.725 and final 0.181 ± 0.003 (63k: 0.182 and
+0.196 ± 0.011). With the same schedule the teacher lowers AbsRel by 11.2% (best) and 9.5% (final step).
+So shorter training fixes the late degradation of E4 without helping E1, and the remaining groups
+use 24k steps.
 
 **Why `subsets_1`:** the three seeds of `main_1_5` share the same labeled images, so their spread
 only measures training noise. Other subsets show how much the choice of labeled images matters.
@@ -54,11 +61,12 @@ only) and AbsRel/RMSE by distance (< 3 m, 3–6 m, > 6 m).
 
 ## Order
 
-1. `main_1_5` with `RERUN_WITHOUT_WEIGHTS = True`
-2. `fix_1_short`, then `fix_1_decay`
-3. `subsets_1_k1`, `subsets_1_k2`
-4. `ablation_1_5`, `budgets_25_100`, `students_1_tiny`, `students_1_base` (with the `fix_1` setting if it helps)
-5. Test set
+1. `main_5_short`
+2. `subsets_1_k1`, `subsets_1_k2`
+3. `ablation_1_5`, `budgets_25_100`, `students_1_tiny`, `students_1_base`
+4. `fix_1_decay` if there is time
+5. Test set (`EVAL_RUNS = ["main_1_5", "fix_1_short", "main_5_short", ...]`)
+6. Analysis: AbsRel against epochs over the labeled images, from the validation curves (no new runs)
 
 After each group: copy `results/<RUN_NAME>/` from Drive into the repo, open a PR,
 and add the summary to the group's experiment issue. Keep `checkpoints/` on Drive.
