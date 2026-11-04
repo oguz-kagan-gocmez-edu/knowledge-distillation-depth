@@ -35,17 +35,20 @@ The 654 test images have not been used yet. All runs: Depth Anything V2 Small te
 | | | 2,312 / 46,248 (5%), 30k steps, small | E1 gt | 0.164 | 0.631 | 0.751 |
 | | | | E3 semi | 0.163 | 0.644 | 0.760 |
 
-| `main_1_5` | `fewlabel_v2.py` | 462 / 46,248 (1%), 63k steps, val 1,000, seeds 0,1,2 (mean) | E1 gt | 0.200 | 0.716 | 0.677 |
-| | | | E4 semi_edge | 0.182 | 0.711 | 0.715 |
+| `main_1_5` | `fewlabel_v2.py` | 462 / 46,248 (1%), 63k steps, val 1,000, seeds 0,1,2 (mean) | E1 gt | 0.199 | 0.713 | 0.676 |
+| | | | E4 semi_edge | 0.182 | 0.712 | 0.710 |
 | | | 2,312 / 46,248 (5%), 63k steps, val 1,000, seeds 0,1,2 (mean) | E1 gt | 0.165 | 0.634 | 0.748 |
 | | | | E4 semi_edge | 0.166 | 0.672 | 0.744 |
 
 `main_1_5` is the first official run group (see `docs/official_runs.md`). Its validation set has 1,000 images,
 so its numbers are not comparable with the 300-image runs above. Final-step AbsRel (mean ± std over seeds):
-1% E1 0.203 ± 0.000, E4 0.199 ± 0.011 (0.199 / 0.212 / 0.185); 5% E1 0.167 ± 0.001, E4 0.171 ± 0.002.
-At 1% the teacher lowers best-checkpoint AbsRel by 8.9% on every seed (best 0.181–0.184 vs 0.199–0.201),
+1% E1 0.205 ± 0.003, E4 0.196 ± 0.011 (0.191 / 0.212 / 0.185); 5% E1 0.167 ± 0.001, E4 0.171 ± 0.002.
+At 1% the teacher lowers best-checkpoint AbsRel by 8.7% on every seed (best 0.180–0.184 vs 0.196–0.202),
 but E4 can degrade with long training while its scale drifts (seed 1). At 5% it gives no gain and a 6% worse RMSE.
-Runs E1 1% seeds 0–2 and E4 1% seed 0 finished before weights were saved (PR #10) and need a rerun for the test set.
+E1 1% seeds 0–2 and E4 1% seed 0 finished before weights were saved (PR #10), so they were run again
+to keep their weights for the test set. The table and `report.json` use the reruns. GPU training is not
+bit-exact, so the reruns differ slightly from the first runs (E1 1% best 0.200 → 0.199, E4 seed 0
+final 0.199 → 0.191). `run.log` has both. All 12 runs now have their best and final weights.
 
 Runs up to `fewlabel_v2_base` were made before the project used git, so their reports have no commit hash.
 `timing_test` records commit `0e01ce5`, which became `393908b` when the history was rewritten (same code).

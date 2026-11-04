@@ -321,3 +321,139 @@ Reference     teacher (opt.)     0.110   0.519   0.881
 462 labeled: teacher helps (9% lower AbsRel, d1 +0.038)
 2312 labeled: no clear difference (< 3%)
 Saved: /content/drive/MyDrive/Colab Notebooks/kd_depth/results/main_1_5/report.json and /content/drive/MyDrive/Colab Notebooks/kd_depth/results/main_1_5/examples.png
+Device: cuda | 2 recipes x 3 seeds x 63000 steps
+
+[1/3] Data (validation = held-out rooms) and teacher outputs
+  50688 images in 249 rooms -> 25 rooms held out for validation; pool 46248, val 1000
+  [pool] 46248 images from cache /content/cache/densedepth_pool46248_val300_seed0/pool
+  [val] 1000 images from cache /content/cache/densedepth_pool46248_seed0/val1000
+
+[2/3] Training: labeled [462, 2312] of 46248 images, recipes ['gt', 'semi_edge']
+  -- E1 gt, 462 labeled, seed 0
+Downloading: "https://download.pytorch.org/models/mobilenet_v3_large-5c1a4163.pth" to /root/.cache/torch/hub/checkpoints/mobilenet_v3_large-5c1a4163.pth
+  0%|          | 0.00/21.1M [00:00<?, ?B/s]100%|██████████| 21.1M/21.1M [00:00<00:00, 235MB/s]
+    ~172 min left for this run
+    step  3000  gt 0.253  | val AbsRel 0.233  d1 0.615  scale x1.00
+    step  6000  gt 0.131  | val AbsRel 0.210  d1 0.636  scale x0.97
+    step  9000  gt 0.094  | val AbsRel 0.209  d1 0.674  scale x1.00
+    step 12000  gt 0.075  | val AbsRel 0.201  d1 0.674  scale x0.99
+    step 15000  gt 0.064  | val AbsRel 0.196  d1 0.670  scale x0.96
+    step 18000  gt 0.058  | val AbsRel 0.197  d1 0.679  scale x0.97
+    step 21000  gt 0.053  | val AbsRel 0.200  d1 0.680  scale x0.98
+    step 24000  gt 0.050  | val AbsRel 0.212  d1 0.636  scale x0.94
+    step 27000  gt 0.047  | val AbsRel 0.198  d1 0.678  scale x0.96
+    step 30000  gt 0.044  | val AbsRel 0.198  d1 0.683  scale x0.97
+    step 33000  gt 0.042  | val AbsRel 0.197  d1 0.682  scale x0.97
+    step 36000  gt 0.041  | val AbsRel 0.201  d1 0.668  scale x0.97
+    step 39000  gt 0.039  | val AbsRel 0.202  d1 0.645  scale x0.93
+    step 42000  gt 0.038  | val AbsRel 0.199  d1 0.667  scale x0.95
+    step 45000  gt 0.036  | val AbsRel 0.200  d1 0.667  scale x0.95
+    step 48000  gt 0.036  | val AbsRel 0.201  d1 0.668  scale x0.96
+    step 51000  gt 0.035  | val AbsRel 0.201  d1 0.666  scale x0.96
+    step 54000  gt 0.034  | val AbsRel 0.201  d1 0.668  scale x0.96
+    step 57000  gt 0.034  | val AbsRel 0.201  d1 0.663  scale x0.95
+    step 60000  gt 0.034  | val AbsRel 0.201  d1 0.662  scale x0.95
+    step 63000  gt 0.034  | val AbsRel 0.201  d1 0.663  scale x0.95
+  -- E1 gt, 462 labeled, seed 1
+    ~49 min left for this run
+    step  3000  gt 0.252  | val AbsRel 0.224  d1 0.632  scale x0.99
+    step  6000  gt 0.132  | val AbsRel 0.210  d1 0.654  scale x0.97
+    step  9000  gt 0.095  | val AbsRel 0.203  d1 0.676  scale x0.99
+    step 12000  gt 0.077  | val AbsRel 0.200  d1 0.684  scale x0.99
+    step 15000  gt 0.065  | val AbsRel 0.206  d1 0.681  scale x1.01
+    step 18000  gt 0.059  | val AbsRel 0.200  d1 0.684  scale x0.98
+    step 21000  gt 0.054  | val AbsRel 0.200  d1 0.685  scale x0.99
+    step 24000  gt 0.050  | val AbsRel 0.201  d1 0.690  scale x0.99
+    step 27000  gt 0.047  | val AbsRel 0.208  d1 0.675  scale x0.99
+    step 30000  gt 0.044  | val AbsRel 0.202  d1 0.674  scale x0.98
+    step 33000  gt 0.042  | val AbsRel 0.205  d1 0.678  scale x0.99
+    step 36000  gt 0.040  | val AbsRel 0.206  d1 0.673  scale x0.99
+    step 39000  gt 0.039  | val AbsRel 0.204  d1 0.672  scale x0.98
+    step 42000  gt 0.037  | val AbsRel 0.204  d1 0.671  scale x0.98
+    step 45000  gt 0.036  | val AbsRel 0.207  d1 0.670  scale x0.99
+    step 48000  gt 0.035  | val AbsRel 0.205  d1 0.669  scale x0.98
+    step 51000  gt 0.034  | val AbsRel 0.205  d1 0.668  scale x0.98
+    step 54000  gt 0.034  | val AbsRel 0.206  d1 0.667  scale x0.98
+    step 57000  gt 0.034  | val AbsRel 0.207  d1 0.667  scale x0.98
+    step 60000  gt 0.033  | val AbsRel 0.207  d1 0.664  scale x0.98
+    step 63000  gt 0.033  | val AbsRel 0.207  d1 0.668  scale x0.99
+  -- E1 gt, 462 labeled, seed 2
+    ~48 min left for this run
+    step  3000  gt 0.258  | val AbsRel 0.226  d1 0.627  scale x0.99
+    step  6000  gt 0.129  | val AbsRel 0.216  d1 0.661  scale x1.01
+    step  9000  gt 0.093  | val AbsRel 0.204  d1 0.661  scale x0.96
+    step 12000  gt 0.074  | val AbsRel 0.207  d1 0.663  scale x0.97
+    step 15000  gt 0.065  | val AbsRel 0.203  d1 0.674  scale x0.97
+    step 18000  gt 0.058  | val AbsRel 0.204  d1 0.661  scale x0.95
+    step 21000  gt 0.053  | val AbsRel 0.210  d1 0.668  scale x0.99
+    step 24000  gt 0.049  | val AbsRel 0.202  d1 0.672  scale x0.96
+    step 27000  gt 0.046  | val AbsRel 0.205  d1 0.670  scale x0.97
+    step 30000  gt 0.044  | val AbsRel 0.204  d1 0.668  scale x0.97
+    step 33000  gt 0.042  | val AbsRel 0.206  d1 0.662  scale x0.97
+    step 36000  gt 0.040  | val AbsRel 0.208  d1 0.654  scale x0.97
+    step 39000  gt 0.039  | val AbsRel 0.204  d1 0.659  scale x0.96
+    step 42000  gt 0.037  | val AbsRel 0.205  d1 0.665  scale x0.97
+    step 45000  gt 0.036  | val AbsRel 0.204  d1 0.657  scale x0.95
+    step 48000  gt 0.035  | val AbsRel 0.205  d1 0.661  scale x0.96
+    step 51000  gt 0.034  | val AbsRel 0.205  d1 0.659  scale x0.96
+    step 54000  gt 0.034  | val AbsRel 0.206  d1 0.659  scale x0.96
+    step 57000  gt 0.034  | val AbsRel 0.206  d1 0.659  scale x0.96
+    step 60000  gt 0.033  | val AbsRel 0.206  d1 0.657  scale x0.96
+    step 63000  gt 0.033  | val AbsRel 0.206  d1 0.660  scale x0.96
+  -- E4 semi_edge, 462 labeled, seed 0
+    ~75 min left for this run
+    step  3000  gt 0.277  teacher 0.787  edge 0.528  | val AbsRel 0.246  d1 0.609  scale x1.04
+    step  6000  gt 0.162  teacher 0.475  edge 0.213  | val AbsRel 0.207  d1 0.673  scale x1.01
+    step  9000  gt 0.145  teacher 0.393  edge 0.181  | val AbsRel 0.194  d1 0.685  scale x1.00
+    step 12000  gt 0.138  teacher 0.342  edge 0.166  | val AbsRel 0.202  d1 0.680  scale x1.04
+    step 15000  gt 0.135  teacher 0.304  edge 0.154  | val AbsRel 0.199  d1 0.679  scale x1.01
+    step 18000  gt 0.136  teacher 0.276  edge 0.146  | val AbsRel 0.190  d1 0.691  scale x1.00
+    step 21000  gt 0.138  teacher 0.257  edge 0.139  | val AbsRel 0.180  d1 0.710  scale x0.97
+    step 24000  gt 0.135  teacher 0.239  edge 0.134  | val AbsRel 0.189  d1 0.697  scale x0.99
+    step 27000  gt 0.132  teacher 0.227  edge 0.131  | val AbsRel 0.182  d1 0.700  scale x0.97
+    step 30000  gt 0.130  teacher 0.216  edge 0.128  | val AbsRel 0.183  d1 0.698  scale x1.00
+    step 33000  gt 0.129  teacher 0.206  edge 0.125  | val AbsRel 0.195  d1 0.684  scale x1.03
+    step 36000  gt 0.126  teacher 0.198  edge 0.123  | val AbsRel 0.187  d1 0.699  scale x1.00
+    step 39000  gt 0.124  teacher 0.191  edge 0.120  | val AbsRel 0.193  d1 0.686  scale x1.02
+    step 42000  gt 0.123  teacher 0.184  edge 0.118  | val AbsRel 0.189  d1 0.699  scale x1.01
+    step 45000  gt 0.121  teacher 0.178  edge 0.116  | val AbsRel 0.184  d1 0.703  scale x1.00
+    step 48000  gt 0.121  teacher 0.174  edge 0.115  | val AbsRel 0.194  d1 0.690  scale x1.03
+    step 51000  gt 0.120  teacher 0.170  edge 0.114  | val AbsRel 0.192  d1 0.692  scale x1.03
+    step 54000  gt 0.120  teacher 0.167  edge 0.113  | val AbsRel 0.192  d1 0.693  scale x1.02
+    step 57000  gt 0.119  teacher 0.165  edge 0.113  | val AbsRel 0.189  d1 0.694  scale x1.01
+    step 60000  gt 0.119  teacher 0.164  edge 0.113  | val AbsRel 0.187  d1 0.696  scale x1.00
+    step 63000  gt 0.119  teacher 0.163  edge 0.112  | val AbsRel 0.191  d1 0.696  scale x1.02
+  -- E4 semi_edge, 462 labeled, seed 1
+    already finished (from semi_edge_lab462_seed1.done.pt), skipping
+  -- E4 semi_edge, 462 labeled, seed 2
+    already finished (from semi_edge_lab462_seed2.done.pt), skipping
+  -- E1 gt, 2312 labeled, seed 0
+    already finished (from gt_lab2312_seed0.done.pt), skipping
+  -- E1 gt, 2312 labeled, seed 1
+    already finished (from gt_lab2312_seed1.done.pt), skipping
+  -- E1 gt, 2312 labeled, seed 2
+    already finished (from gt_lab2312_seed2.done.pt), skipping
+  -- E4 semi_edge, 2312 labeled, seed 0
+    already finished (from semi_edge_lab2312_seed0.done.pt), skipping
+  -- E4 semi_edge, 2312 labeled, seed 1
+    already finished (from semi_edge_lab2312_seed1.done.pt), skipping
+  -- E4 semi_edge, 2312 labeled, seed 2
+    already finished (from semi_edge_lab2312_seed2.done.pt), skipping
+
+[3/3] Summary
+---------------------------------------------------------------------------------------------
+FEW-LABEL TEST  (validation: 1000 images from held-out rooms, best checkpoint; last = AbsRel at the final step)
+---------------------------------------------------------------------------------------------
+Labeled       Recipe            AbsRel    RMSE  d<1.25     vs gt  scale  best@           last
+462 (0.999%)  E1 gt              0.199   0.713   0.676            x0.96  15000   0.205 ±0.003  (best ±0.002)
+462 (0.999%)  E4 semi_edge       0.182   0.712   0.710     -8.7%  x0.97  21000   0.196 ±0.011  (best ±0.002)
+---------------------------------------------------------------------------------------------
+2312 (5%)     E1 gt              0.165   0.634   0.748            x0.97  30000   0.167 ±0.001  (best ±0.001)
+2312 (5%)     E4 semi_edge       0.166   0.672   0.744     +0.6%  x0.96  18000   0.171 ±0.002  (best ±0.001)
+---------------------------------------------------------------------------------------------
+Reference     constant depth     0.402   1.345   0.343
+Reference     teacher (opt.)     0.110   0.519   0.881
+---------------------------------------------------------------------------------------------
+462 labeled: teacher helps (9% lower AbsRel, d1 +0.034)
+2312 labeled: no clear difference (< 3%)
+Saved: /content/drive/MyDrive/Colab Notebooks/kd_depth/results/main_1_5/report.json and /content/drive/MyDrive/Colab Notebooks/kd_depth/results/main_1_5/examples.png
