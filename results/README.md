@@ -39,6 +39,8 @@ The 654 test images have not been used yet. All runs: Depth Anything V2 Small te
 | | | | E4 semi_edge | 0.182 | 0.712 | 0.710 |
 | | | 2,312 / 46,248 (5%), 63k steps, val 1,000, seeds 0,1,2 (mean) | E1 gt | 0.165 | 0.634 | 0.748 |
 | | | | E4 semi_edge | 0.166 | 0.672 | 0.744 |
+| `fix_1_short` | `fewlabel_v2.py` | 462 / 46,248 (1%), **24k steps**, val 1,000, seeds 0,1,2 (mean) | E1 gt | 0.199 | 0.712 | 0.676 |
+| | | | E4 semi_edge | 0.176 | 0.705 | 0.725 |
 
 `main_1_5` is the first official run group (see `docs/official_runs.md`). Its validation set has 1,000 images,
 so its numbers are not comparable with the 300-image runs above. Final-step AbsRel (mean ± std over seeds):
@@ -49,6 +51,10 @@ E1 1% seeds 0–2 and E4 1% seed 0 finished before weights were saved (PR #10), 
 to keep their weights for the test set. The table and `report.json` use the reruns. GPU training is not
 bit-exact, so the reruns differ slightly from the first runs (E1 1% best 0.200 → 0.199, E4 seed 0
 final 0.199 → 0.191). `run.log` has both. All 12 runs now have their best and final weights.
+
+`fix_1_short` trains for 24k instead of 63k steps. Final-step AbsRel: E1 0.200 ± 0.001, E4 0.181 ± 0.003
+(0.179 / 0.185 / 0.178). E1 is the same as at 63k, while E4 no longer degrades late: the teacher lowers
+AbsRel by 11.2% at the best checkpoint and 9.5% at the final step. The remaining groups use 24k steps.
 
 Runs up to `fewlabel_v2_base` were made before the project used git, so their reports have no commit hash.
 `timing_test` records commit `0e01ce5`, which became `393908b` when the history was rewritten (same code).
