@@ -26,9 +26,9 @@ At ~0.07 s/step a 63k-step run takes ~75 min (the base student takes longer).
 | `RUN_NAME` | What | Runs | ~Hours | Status |
 |---|---|---|---|---|
 | `main_1_5` | E1 vs E4 at 1% and 5%, seeds 0,1,2 | 12 | 15 | done (`results/main_1_5`) |
-| `main_1_5` + `RERUN_WITHOUT_WEIGHTS` | the 4 runs that kept no weights (E1 1% seeds 0–2, E4 1% seed 0) | 4 | 5 | to do |
-| `fix_1_decay` | E4 at 1%, teacher weight falls to 0 over the second half (`--teacher-decay 0.5`) | 3 | 4 | to do |
+| `main_1_5` + `RERUN_WITHOUT_WEIGHTS` | the 4 runs that kept no weights (E1 1% seeds 0–2, E4 1% seed 0) | 4 | 5 | done |
 | `fix_1_short` | E4 at 1%, 24k steps | 3 | 1.5 | to do |
+| `fix_1_decay` | E4 at 1%, teacher weight falls to 0 over the second half (`--teacher-decay 0.5`) | 3 | 4 | to do |
 | `subsets_1_k1`, `subsets_1_k2` | E1 vs E4 at 1% on two other labeled subsets (`--label-subset`) | 4 | 5 | to do |
 | `ablation_1_5` | E2, E3 at 1% and 5% | 4 | 5 | to do |
 | `budgets_25_100` | E5: E1 vs E4 at 25% and 100% | 4 | 5 | to do |
