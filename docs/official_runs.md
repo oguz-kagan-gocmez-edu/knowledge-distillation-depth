@@ -35,7 +35,7 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `budgets_25_100` | E5: E1 vs E4 at 25% and 100% | 24k | 4 | 2 | done |
 | `students_1_tiny`, `students_1_base` | E6: E1 vs E4 at 1% with ~1M and ~4M students | 24k | 4 | 2.5 | done |
 | `fix_1_decay` | optional: E4 at 1%, teacher weight falls to 0 over the second half | 63k | 3 | 4 | skipped (24k steps fixed the degradation) |
-| `decay_1_5_25` | E4 at 1%, 5% and 25% with `--teacher-decay 0.5`: does the decay remove the harm with many labels? | 24k | 3 | 1.5 | running (preset added only in the Colab copy) |
+| `decay_1_5_25` | E4 at 1%, 5% and 25% with `--teacher-decay 0.5`: does the decay remove the harm with many labels? | 24k | 3 | 1.5 | running |
 
 The main table of the report uses `fix_1_short` (1%) and `main_5_short` (5%). `main_1_5` stays in
 the report as the long-training result that shows the late degradation.
