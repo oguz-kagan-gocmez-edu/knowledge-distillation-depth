@@ -79,9 +79,11 @@ same arguments continues where it stopped, and finished runs are skipped.
 ## Long runs on Colab
 
 Open [`notebooks/colab_run.ipynb`](notebooks/colab_run.ipynb) in Colab (File → Open notebook → GitHub),
-follow the one-time setup at the top (upload `nyu_data.zip` to `MyDrive/kd_depth/`, pick an L4 GPU),
-set `RUN_NAME` and `ARGS`, and Run all. Teacher outputs,
-checkpoints and results are kept on Drive, so after a disconnect Run all simply continues.
+follow the one-time setup at the top (upload `nyu_data.zip` to a Drive folder, set `DRIVE` to it,
+pick an L4 GPU) and Run all. The first run (`RUN_NAME = "quick"`) checks the setup in a few minutes.
+Then set `RUN_NAME` to one of the report's run groups in `PRESETS`, or to a new name with your own
+`CUSTOM_ARGS`. Teacher outputs, checkpoints and results are kept on Drive, so after a disconnect
+Run all simply continues.
 
 | Recipe | ID | Training signal |
 |---|---|---|
