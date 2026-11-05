@@ -53,6 +53,12 @@ The 654 test images have not been used yet. All runs: Depth Anything V2 Small te
 | | | | E3 semi | 0.172 | 0.699 | 0.726 |
 | `students_1_tiny` | `fewlabel_v2.py` | 462 / 46,248 (1%), tiny student (~1M), 24k steps, seed 0 | E1 gt | 0.224 | 0.785 | 0.614 |
 | | | | E4 semi_edge | 0.203 | 0.744 | 0.675 |
+| `students_1_base` | `fewlabel_v2.py` | 462 / 46,248 (1%), base student (~4M), 24k steps, seed 0 | E1 gt | 0.190 | 0.682 | 0.701 |
+| | | | E4 semi_edge | 0.174 | 0.670 | 0.749 |
+| `budgets_25_100` | `fewlabel_v2.py` | 11,562 / 46,248 (25%), 24k steps, seed 0 | E1 gt | 0.156 | 0.622 | 0.762 |
+| | | | E4 semi_edge | 0.168 | 0.670 | 0.743 |
+| | | 46,248 / 46,248 (100%), 24k steps, seed 0 | E1 gt | 0.153 | 0.595 | 0.781 |
+| | | | E4 semi_edge | 0.164 | 0.661 | 0.748 |
 
 `main_1_5` is the first official run group (see `docs/official_runs.md`). Its validation set has 1,000 images,
 so its numbers are not comparable with the 300-image runs above. Final-step AbsRel (mean ± std over seeds):
@@ -88,6 +94,17 @@ teacher variant is worse than E1 (0.166): E2 0.174, E3 0.172, E4 0.170.
 `students_1_tiny` (1%, ~1M-parameter student, one seed): 0.224 → 0.203 (−9.3%), final step
 0.225 → 0.207 (−8%). Both recipes are ~0.025 worse than with the small student, but the teacher's
 gain is about the same. The tiny student with the teacher is close to the small student without it.
+
+`students_1_base` (1%, ~4M-parameter student, one seed): 0.190 → 0.174 (−8.5%), final step
+0.196 → 0.184 (−6%). E1 overfits: validation rises after 12k steps (0.190 → 0.196) while its training
+SILog falls to 0.046. With the teacher, base (0.174) is about the same as small (0.176), and the small
+student with the teacher beats the base student without it (0.190).
+
+`budgets_25_100` (one seed): the teacher hurts with many labels: +7.7% AbsRel at 25% (0.156 → 0.168)
+and +7.2% at 100% (0.153 → 0.164). E1 keeps improving until the last step at both budgets (no
+memorization: each labeled image is seen ~17 and ~4 times), while E4 stays at 0.164–0.170 from 5% to
+100% and its training SILog stays at ~0.18. Over all budgets the teacher's effect on AbsRel is
+−11.2% (1%), +2.5% (5%), +7.7% (25%) and +7.2% (100%).
 
 Runs up to `fewlabel_v2_base` were made before the project used git, so their reports have no commit hash.
 `timing_test` records commit `0e01ce5`, which became `393908b` when the history was rewritten (same code).
