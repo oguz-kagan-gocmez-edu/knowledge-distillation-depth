@@ -32,8 +32,8 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `main_5_short` | E1 vs E4 at 5%, seeds 0,1,2 (same schedule as `fix_1_short`) | 24k | 6 | 2.5 | done |
 | `subsets_1_k1`, `subsets_1_k2` | E1 vs E4 at 1% on two other labeled subsets (`--label-subset`) | 24k | 4 | 2 | done |
 | `ablation_1_5` | E2, E3 at 1% and 5% | 24k | 4 | 2 | done |
-| `budgets_25_100` | E5: E1 vs E4 at 25% and 100% | 24k | 4 | 2 | running |
-| `students_1_tiny`, `students_1_base` | E6: E1 vs E4 at 1% with ~1M and ~4M students | 24k | 4 | 2.5 | `tiny` done, `base` running |
+| `budgets_25_100` | E5: E1 vs E4 at 25% and 100% | 24k | 4 | 2 | done |
+| `students_1_tiny`, `students_1_base` | E6: E1 vs E4 at 1% with ~1M and ~4M students | 24k | 4 | 2.5 | done |
 | `fix_1_decay` | optional: E4 at 1%, teacher weight falls to 0 over the second half | 63k | 3 | 4 | optional |
 
 The main table of the report uses `fix_1_short` (1%) and `main_5_short` (5%). `main_1_5` stays in
