@@ -9,11 +9,34 @@ few labeled images plus a large teacher (Depth Anything V2, 24.8M) on the unlabe
 The goal is a model about 8× smaller than the teacher that runs in real time, and a study of
 **when the teacher helps and when it does not**.
 
-## Current status
+## Results so far
 
-With 5% labels (250 of 5,000 images), learning from the teacher on the unlabeled images
-lowers AbsRel by about 5% (3 seeds), see [results/](results/README.md).
-With full labels, the teacher gives no gain.
+All training runs are done; the test set is evaluated next. Validation AbsRel (lower is better),
+3.15M-parameter student, 24k steps:
+
+| Labeled images | Labels only (E1) | Labels + teacher (E4) | Change |
+|---|---|---|---|
+| 1% (462) | 0.199 | **0.176** | **−11%** |
+| 5% (2,312) | **0.166** | 0.170 | +2.5% |
+| 25% (11,562) | **0.156** | 0.168 | +8% |
+| 100% (46,248) | **0.153** | 0.164 | +7% |
+
+- With very few labels the teacher clearly helps, on every labeled subset and student size (1–4M).
+- The gain comes from the teacher's targets on the unlabeled images; the edge loss adds nothing.
+- With 5% labels or more the teacher hurts: it limits how well the student fits the real depth.
+
+Teacher reference (aligned to real depth): 0.110. Details, ablations and all runs:
+[results/README.md](results/README.md).
+
+## Documents
+
+| Document | What is in it |
+|---|---|
+| [results/README.md](results/README.md) | all results, by question, with the setup and notes |
+| [docs/official_runs.md](docs/official_runs.md) | plan and status of the official runs, test-set protocol |
+| [docs/proposal/](docs/proposal/) | project proposal |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | how experiments are tracked with issues, branches and PRs |
+| [CITATIONS.md](CITATIONS.md) | models, data and methods used |
 
 ## Repository layout
 

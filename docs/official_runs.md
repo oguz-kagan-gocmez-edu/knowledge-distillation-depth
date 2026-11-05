@@ -1,5 +1,8 @@
 # Official runs
 
+**Status:** all training groups are done (results: [`results/README.md`](../results/README.md)).
+Next: the test set, then the epoch analysis.
+
 The plan for the runs that go into the report. It follows the proposal (E1–E6, 63k steps,
 3 seeds for the main comparison). One change comes from the pilot (`results/long_e1_e3`):
 **1% labels is a second main comparison point, also with 3 seeds.** In the pilot the teacher
@@ -10,7 +13,7 @@ distillation helps and where it stops helping.
 
 - Full pool (46,248 images), validation **1,000** images from 25 held-out rooms. The pilot used
   300, and its numbers moved by ±0.01 between evaluations.
-- 63,000 steps, evaluation every 3,000 steps, checkpoint every 1,000.
+- 24,000 steps (`main_1_5` used 63,000), evaluation every 3,000 steps, checkpoint every 1,000.
 - Every report has the best checkpoint (`mean`) and the final step (`mean_last`), with AbsRel,
   RMSE, δ1–δ3 and log10.
 - Model selection: the best checkpoint on validation is the main model (early stopping), and
