@@ -1,0 +1,67 @@
+Device: cuda | 2 recipes x 1 seeds x 24000 steps
+
+[1/3] Data (validation = held-out rooms) and teacher outputs
+  50688 images in 249 rooms -> 25 rooms held out for validation; pool 46248, val 1000
+  [pool] 46248 images from cache /content/cache/densedepth_pool46248_val300_seed0/pool
+  [val] 1000 images from cache /content/cache/densedepth_pool46248_seed0/val1000
+
+[2/3] Training: labeled [462, 2312] of 46248 images, recipes ['gt_t', 'semi']
+  -- E2 gt_t, 462 labeled, seed 0
+Downloading: "https://download.pytorch.org/models/mobilenet_v3_large-5c1a4163.pth" to /root/.cache/torch/hub/checkpoints/mobilenet_v3_large-5c1a4163.pth
+  0%|          | 0.00/21.1M [00:00<?, ?B/s] 88%|████████▊ | 18.5M/21.1M [00:00<00:00, 193MB/s]100%|██████████| 21.1M/21.1M [00:00<00:00, 195MB/s]
+    ~68 min left for this run
+    step  3000  gt 0.239  teacher 0.601  | val AbsRel 0.234  d1 0.639  scale x1.06
+    step  6000  gt 0.164  teacher 0.314  | val AbsRel 0.206  d1 0.683  scale x1.00
+    step  9000  gt 0.167  teacher 0.239  | val AbsRel 0.201  d1 0.671  scale x0.98
+    step 12000  gt 0.163  teacher 0.201  | val AbsRel 0.200  d1 0.695  scale x1.00
+    step 15000  gt 0.156  teacher 0.175  | val AbsRel 0.197  d1 0.678  scale x0.98
+    step 18000  gt 0.153  teacher 0.156  | val AbsRel 0.196  d1 0.680  scale x0.97
+    step 21000  gt 0.152  teacher 0.143  | val AbsRel 0.195  d1 0.676  scale x0.95
+    step 24000  gt 0.150  teacher 0.138  | val AbsRel 0.199  d1 0.685  scale x0.99
+  -- E3 semi, 462 labeled, seed 0
+    ~24 min left for this run
+    step  3000  gt 0.256  teacher 0.694  | val AbsRel 0.205  d1 0.650  scale x0.99
+    step  6000  gt 0.168  teacher 0.405  | val AbsRel 0.194  d1 0.681  scale x0.97
+    step  9000  gt 0.164  teacher 0.332  | val AbsRel 0.188  d1 0.704  scale x1.00
+    step 12000  gt 0.154  teacher 0.293  | val AbsRel 0.181  d1 0.713  scale x0.97
+    step 15000  gt 0.142  teacher 0.264  | val AbsRel 0.181  d1 0.716  scale x0.98
+    step 18000  gt 0.135  teacher 0.244  | val AbsRel 0.182  d1 0.709  scale x0.98
+    step 21000  gt 0.131  teacher 0.231  | val AbsRel 0.177  d1 0.713  scale x0.96
+    step 24000  gt 0.128  teacher 0.225  | val AbsRel 0.180  d1 0.717  scale x0.98
+  -- E2 gt_t, 2312 labeled, seed 0
+    ~19 min left for this run
+    step  3000  gt 0.269  teacher 0.659  | val AbsRel 0.196  d1 0.666  scale x0.96
+    step  6000  gt 0.190  teacher 0.374  | val AbsRel 0.200  d1 0.692  scale x1.04
+    step  9000  gt 0.185  teacher 0.299  | val AbsRel 0.178  d1 0.727  scale x0.99
+    step 12000  gt 0.176  teacher 0.258  | val AbsRel 0.176  d1 0.719  scale x0.98
+    step 15000  gt 0.168  teacher 0.228  | val AbsRel 0.176  d1 0.732  scale x0.99
+    step 18000  gt 0.162  teacher 0.207  | val AbsRel 0.175  d1 0.728  scale x0.98
+    step 21000  gt 0.158  teacher 0.192  | val AbsRel 0.174  d1 0.723  scale x0.95
+    step 24000  gt 0.157  teacher 0.186  | val AbsRel 0.176  d1 0.720  scale x0.97
+  -- E3 semi, 2312 labeled, seed 0
+    ~18 min left for this run
+    step  3000  gt 0.285  teacher 0.707  | val AbsRel 0.192  d1 0.659  scale x0.94
+    step  6000  gt 0.199  teacher 0.414  | val AbsRel 0.184  d1 0.709  scale x1.01
+    step  9000  gt 0.191  teacher 0.340  | val AbsRel 0.174  d1 0.724  scale x0.95
+    step 12000  gt 0.181  teacher 0.298  | val AbsRel 0.174  d1 0.720  scale x0.96
+    step 15000  gt 0.172  teacher 0.268  | val AbsRel 0.177  d1 0.737  scale x0.99
+    step 18000  gt 0.164  teacher 0.247  | val AbsRel 0.174  d1 0.735  scale x0.98
+    step 21000  gt 0.159  teacher 0.233  | val AbsRel 0.172  d1 0.726  scale x0.94
+    step 24000  gt 0.158  teacher 0.227  | val AbsRel 0.176  d1 0.732  scale x0.97
+
+[3/3] Summary
+---------------------------------------------------------------------------------------------
+FEW-LABEL TEST  (validation: 1000 images from held-out rooms, best checkpoint; last = AbsRel at the final step)
+---------------------------------------------------------------------------------------------
+Labeled       Recipe            AbsRel    RMSE  d<1.25     vs gt  scale  best@           last
+462 (0.999%)  E2 gt_t            0.195   0.737   0.676            x0.95  21000          0.199
+462 (0.999%)  E3 semi            0.177   0.710   0.713            x0.96  21000          0.180
+---------------------------------------------------------------------------------------------
+2312 (5%)     E2 gt_t            0.174   0.690   0.723            x0.95  21000          0.176
+2312 (5%)     E3 semi            0.172   0.699   0.726            x0.94  21000          0.176
+---------------------------------------------------------------------------------------------
+Reference     constant depth     0.402   1.345   0.343
+Reference     teacher (opt.)     0.110   0.519   0.881
+---------------------------------------------------------------------------------------------
+Note: one seed only. Differences below ~3% may be noise; use --seeds 0,1,2 to check.
+Saved: /content/drive/MyDrive/Colab Notebooks/kd_depth/results/ablation_1_5/report.json and /content/drive/MyDrive/Colab Notebooks/kd_depth/results/ablation_1_5/examples.png
