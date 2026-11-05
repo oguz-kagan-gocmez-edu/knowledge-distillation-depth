@@ -11,9 +11,21 @@ The goal is a model about 8× smaller than the teacher that runs in real time, a
 
 ## Current status
 
-With 5% labels (250 of 5,000 images), learning from the teacher on the unlabeled images
-lowers AbsRel by about 5% (3 seeds), see [results/](results/README.md).
-With full labels, the teacher gives no gain.
+All training runs are done; the test set is next. Validation AbsRel of the 3.15M student
+(lower is better, the teacher gets 0.110):
+
+| Labeled images | Labels only (E1) | + teacher on unlabeled images (E4) | Change |
+|---|---|---|---|
+| 1% (462) | 0.199 | **0.176** | **−11%** |
+| 5% (2,312) | **0.166** | 0.170 | +2.5% |
+| 25% (11,562) | **0.156** | 0.168 | +8% |
+| 100% (46,248) | **0.153** | 0.164 | +7% |
+
+- With very few labels the teacher helps, on every labeled subset and student size tried.
+- The gain comes from the teacher's targets on the unlabeled images; the edge loss adds nothing measurable.
+- With more labels the teacher holds the student back.
+
+Details for every run are in [results/README.md](results/README.md).
 
 ## Repository layout
 
