@@ -13,8 +13,9 @@ Each folder has `report.json` (full config and metrics), `examples.png` and, for
 Contents:
 
 1. [Official runs](#official-runs): 1,000 validation images, Colab L4
-2. [Pilot runs](#pilot-runs): 300 validation images (not comparable with the official runs)
-3. [Run history notes](#run-history-notes)
+2. [All official results](#all-official-results): every run with every metric
+3. [Pilot runs](#pilot-runs): 300 validation images (not comparable with the official runs)
+4. [Run history notes](#run-history-notes)
 
 ---
 
@@ -23,10 +24,28 @@ Contents:
 Full pool of 46,248 images, validation on **1,000 images from 25 held-out rooms**, small student
 and 24k steps unless noted. The plan is in [`docs/official_runs.md`](../docs/official_runs.md).
 
-| Reference | AbsRel ↓ | RMSE ↓ | δ<1.25 ↑ |
-|---|---|---|---|
-| Constant depth (lower bound) | 0.402 | 1.345 | 0.343 |
-| Teacher, aligned to real depth (optimistic upper bound) | 0.110 | 0.519 | 0.881 |
+**Reference points** (same 1,000 validation images)
+
+| Reference | AbsRel ↓ | RMSE ↓ | δ1 ↑ | δ2 ↑ | δ3 ↑ | log10 ↓ |
+|---|---|---|---|---|---|---|
+| Constant depth (median of the labeled images) | 0.402 | 1.345 | 0.343 | 0.635 | 0.812 | 0.170 |
+| Teacher, aligned to real depth per image (optimistic) | 0.110 | 0.519 | 0.881 | 0.966 | 0.985 | 0.049 |
+
+The constant-depth reference uses the median depth of the labeled images, so it moves slightly
+with the labeled set (0.406 in `budgets_25_100`). The teacher reference scales and shifts each
+teacher prediction to the real depth of that image, which a student never sees, so it is an
+optimistic upper bound.
+
+**Model size and speed** (measured in `feasibility`, input 256×192)
+
+| Model | Parameters | Times smaller than the teacher | GFLOPs | Latency |
+|---|---|---|---|---|
+| Teacher: Depth Anything V2 Small | 24.8M | 1× | – | – |
+| Student tiny (MobileNetV3-Small) | ~1M | ~25× | – | – |
+| **Student small (MobileNetV3-Large)** | **3.15M** | **~8×** | **0.74** | **8.6 ms (M4 Pro GPU), 123 ms (CPU)** |
+| Student base (EfficientNet-B0) | ~4M | ~6× | – | – |
+
+The tiny and base sizes are design targets; they are measured with the test set.
 
 ### Summary: effect of the teacher by label budget
 
@@ -114,6 +133,42 @@ E1 and E4 are from `fix_1_short` and `main_5_short` (3 seeds).
 - At 1% E4 reaches 0.180–0.184 on every seed, but degrades late on two seeds
   (final 0.191 / 0.212 / 0.185) while its predicted scale drifts.
 - With 24k steps (`fix_1_short`) E4 no longer degrades, so all later groups use 24k steps.
+
+---
+
+## All official results
+
+Every official run with every metric, taken from the `report.json` files. Mean (± std) over seeds
+when there are several. **Best** = the checkpoint with the lowest validation AbsRel ("Best at" is
+its step for each seed); **final** = the last step. δ1–δ3: share of pixels within 1.25, 1.25² and
+1.25³ of the real depth.
+
+| Folder | Labeled | Recipe | Student | Steps | Seeds | AbsRel ↓ | RMSE ↓ | δ1 ↑ | δ2 ↑ | δ3 ↑ | log10 ↓ | Best at | Final AbsRel ↓ | Final RMSE ↓ | Final δ1 ↑ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `main_1_5` | 1% (462) | E1 gt | small | 63k | 3 | 0.199 ± 0.002 | 0.713 | 0.676 | 0.914 | 0.977 | 0.084 | 15k/21k/24k | 0.205 ± 0.003 | 0.727 | 0.664 |
+| `main_1_5` | 1% (462) | E4 semi_edge | small | 63k | 3 | 0.182 ± 0.002 | 0.712 | 0.710 | 0.919 | 0.971 | 0.081 | 21k/12k/45k | 0.196 ± 0.011 | 0.743 | 0.684 |
+| `main_1_5` | 5% (2,312) | E1 gt | small | 63k | 3 | 0.165 ± 0.001 | 0.634 | 0.748 | 0.940 | 0.984 | 0.071 | 30k/30k/36k | 0.167 ± 0.001 | 0.638 | 0.742 |
+| `main_1_5` | 5% (2,312) | E4 semi_edge | small | 63k | 3 | 0.166 ± 0.001 | 0.672 | 0.744 | 0.929 | 0.976 | 0.074 | 18k/51k/39k | 0.171 ± 0.002 | 0.682 | 0.727 |
+| `fix_1_short` | 1% (462) | E1 gt | small | 24k | 3 | 0.199 ± 0.001 | 0.712 | 0.676 | 0.914 | 0.978 | 0.084 | 15k/18k/21k | 0.200 ± 0.001 | 0.711 | 0.676 |
+| `fix_1_short` | 1% (462) | E4 semi_edge | small | 24k | 3 | 0.176 ± 0.001 | 0.705 | 0.725 | 0.923 | 0.973 | 0.078 | 21k/15k/21k | 0.181 ± 0.003 | 0.705 | 0.717 |
+| `main_5_short` | 5% (2,312) | E1 gt | small | 24k | 3 | 0.166 ± 0.001 | 0.635 | 0.744 | 0.941 | 0.986 | 0.072 | 18k/21k/18k | 0.166 ± 0.001 | 0.635 | 0.744 |
+| `main_5_short` | 5% (2,312) | E4 semi_edge | small | 24k | 3 | 0.170 ± 0.001 | 0.675 | 0.736 | 0.930 | 0.976 | 0.075 | 18k/21k/24k | 0.172 ± 0.000 | 0.672 | 0.736 |
+| `subsets_1_k1` | 1% (462) | E1 gt | small | 24k | 1 | 0.202 | 0.738 | 0.657 | 0.908 | 0.976 | 0.086 | 18k | 0.202 | 0.737 | 0.657 |
+| `subsets_1_k1` | 1% (462) | E4 semi_edge | small | 24k | 1 | 0.180 | 0.718 | 0.723 | 0.924 | 0.973 | 0.079 | 21k | 0.180 | 0.721 | 0.721 |
+| `subsets_1_k2` | 1% (462) | E1 gt | small | 24k | 1 | 0.199 | 0.708 | 0.684 | 0.915 | 0.975 | 0.082 | 15k | 0.201 | 0.709 | 0.679 |
+| `subsets_1_k2` | 1% (462) | E4 semi_edge | small | 24k | 1 | 0.177 | 0.683 | 0.735 | 0.930 | 0.973 | 0.076 | 15k | 0.180 | 0.689 | 0.732 |
+| `ablation_1_5` | 1% (462) | E2 gt_t | small | 24k | 1 | 0.195 | 0.737 | 0.676 | 0.909 | 0.969 | 0.086 | 21k | 0.199 | 0.718 | 0.685 |
+| `ablation_1_5` | 1% (462) | E3 semi | small | 24k | 1 | 0.177 | 0.710 | 0.713 | 0.916 | 0.972 | 0.080 | 21k | 0.180 | 0.699 | 0.717 |
+| `ablation_1_5` | 5% (2,312) | E2 gt_t | small | 24k | 1 | 0.174 | 0.690 | 0.723 | 0.925 | 0.977 | 0.077 | 21k | 0.176 | 0.685 | 0.720 |
+| `ablation_1_5` | 5% (2,312) | E3 semi | small | 24k | 1 | 0.172 | 0.699 | 0.726 | 0.923 | 0.974 | 0.078 | 21k | 0.176 | 0.677 | 0.732 |
+| `students_1_tiny` | 1% (462) | E1 gt | tiny | 24k | 1 | 0.224 | 0.785 | 0.614 | 0.892 | 0.970 | 0.094 | 15k | 0.225 | 0.778 | 0.618 |
+| `students_1_tiny` | 1% (462) | E4 semi_edge | tiny | 24k | 1 | 0.203 | 0.744 | 0.675 | 0.905 | 0.968 | 0.086 | 12k | 0.207 | 0.747 | 0.663 |
+| `students_1_base` | 1% (462) | E1 gt | base | 24k | 1 | 0.190 | 0.682 | 0.701 | 0.927 | 0.981 | 0.079 | 12k | 0.196 | 0.685 | 0.695 |
+| `students_1_base` | 1% (462) | E4 semi_edge | base | 24k | 1 | 0.174 | 0.670 | 0.749 | 0.931 | 0.974 | 0.075 | 18k | 0.184 | 0.693 | 0.736 |
+| `budgets_25_100` | 25% (11,562) | E1 gt | small | 24k | 1 | 0.156 | 0.622 | 0.762 | 0.947 | 0.987 | 0.069 | 24k | 0.156 | 0.622 | 0.762 |
+| `budgets_25_100` | 25% (11,562) | E4 semi_edge | small | 24k | 1 | 0.168 | 0.670 | 0.743 | 0.931 | 0.976 | 0.074 | 21k | 0.171 | 0.683 | 0.733 |
+| `budgets_25_100` | 100% (46,248) | E1 gt | small | 24k | 1 | 0.153 | 0.595 | 0.781 | 0.954 | 0.987 | 0.066 | 24k | 0.153 | 0.595 | 0.781 |
+| `budgets_25_100` | 100% (46,248) | E4 semi_edge | small | 24k | 1 | 0.164 | 0.661 | 0.748 | 0.934 | 0.977 | 0.073 | 21k | 0.166 | 0.666 | 0.745 |
 
 ---
 
