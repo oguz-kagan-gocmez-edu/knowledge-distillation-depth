@@ -215,10 +215,12 @@ def ssi_normalize(x, eps=1e-6):
     return ((f - med) / s).reshape_as(x)
 
 
-def teacher_terms(pred, tdisp, with_edge, scales=4):
+def teacher_terms(pred, tdisp, with_edge, scales=4, w=None):
+    """w: optional weight per image (the batch mean is taken over w * loss of each image)."""
     pdisp = 1.0 / pred.clamp(min=0.1)                 # student depth -> inverse depth
     a, b = ssi_normalize(pdisp), ssi_normalize(tdisp)
-    l_t = (a - b).abs().mean()
+    avg = (lambda v: v.mean()) if w is None else (lambda v: (v.flatten(1).mean(1) * w).mean())
+    l_t = avg((a - b).abs())
     if not with_edge:
         return l_t, None
     r = (a - b).unsqueeze(1)                          # gradient matching (MiDaS style)
@@ -226,8 +228,8 @@ def teacher_terms(pred, tdisp, with_edge, scales=4):
     for s in range(scales):
         if s:
             r = F.avg_pool2d(r, 2)
-        l_e = l_e + (r[..., :, 1:] - r[..., :, :-1]).abs().mean() \
-                  + (r[..., 1:, :] - r[..., :-1, :]).abs().mean()
+        l_e = l_e + avg((r[..., :, 1:] - r[..., :, :-1]).abs()) \
+                  + avg((r[..., 1:, :] - r[..., :-1, :]).abs())
     return l_t, l_e / scales
 
 
@@ -274,7 +276,7 @@ def run_signature(recipe, n_lab, seed, n_pool, args):
 
 
 OPTIONAL_DEFAULTS = {"teacher_decay": 0.0, "label_subset": 0, "aug": False,
-                     "weight_decay": 1e-4, "dropout": 0.0}
+                     "weight_decay": 1e-4, "dropout": 0.0, "pool_gt": False, "lambda_t_lab": 1.0}
 
 
 def augment(x, d, t, gen, max_scale=1.25):
@@ -408,6 +410,8 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         d, t = torch.from_numpy(depth[ii]), torch.from_numpy(disp[ii]).float()
         flip = torch.rand(bs, generator=gen) < 0.5
         x[flip], d[flip], t[flip] = x[flip].flip(-1), d[flip].flip(-1), t[flip].flip(-1)
+        if args.pool_gt:                               # pool images that are labeled count as labeled
+            is_lab = torch.isin(idx, lab)
         x, d, t, is_lab = x.to(device), d.to(device), t.to(device), is_lab.to(device)
         if args.aug:
             x, d, t = augment(x, d, t, gen, args.aug_scale)
@@ -419,7 +423,10 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         if cfg["teacher"]:
             # ramp-up: the student first learns real depth, then the teacher term grows
             ramp = teacher_weight(step, args.steps, args.ramp, args.teacher_decay)
-            l_t, l_e = teacher_terms(pred, t, cfg["edge"])
+            w = None
+            if args.lambda_t_lab != 1.0:               # teacher weight on images with real depth
+                w = torch.where(is_lab, args.lambda_t_lab, 1.0).float()
+            l_t, l_e = teacher_terms(pred, t, cfg["edge"], w=w)
             loss = loss + ramp * args.lambda_t * l_t
             logs["teacher"].append(l_t.item())
             if cfg["edge"]:
@@ -515,6 +522,10 @@ def main():
     ap.add_argument("--weight-decay", type=float, default=1e-4, help="AdamW weight decay")
     ap.add_argument("--dropout", type=float, default=0.0,
                     help="channel dropout before the decoder head (0 = off)")
+    ap.add_argument("--pool-gt", action="store_true",
+                    help="also use the real depth of labeled images drawn in the pool half (E3/E4)")
+    ap.add_argument("--lambda-t-lab", type=float, default=1.0,
+                    help="teacher weight on images with real depth, relative to unlabeled ones")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/fewlabel_v2")
     ap.add_argument("--cache-dir", default="cache",

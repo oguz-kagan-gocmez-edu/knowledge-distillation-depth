@@ -163,6 +163,30 @@ def test_regularization_options_run(tmp_path):
     assert done["signature"]["aug"] and done["signature"]["dropout"] == 0.2
 
 
+def test_teacher_weight_per_image(fewlabel):
+    torch.manual_seed(0)
+    pred, t = torch.rand(4, 24, 32) + 0.5, torch.rand(4, 24, 32)
+    base = fewlabel.teacher_terms(pred, t, True)
+    ones = fewlabel.teacher_terms(pred, t, True, w=torch.ones(4))
+    assert all(torch.allclose(x, y) for x, y in zip(base, ones))    # weight 1 = old loss
+    half = fewlabel.teacher_terms(pred, t, True, w=torch.tensor([0.0, 0.0, 1.0, 1.0]))
+    last = fewlabel.teacher_terms(pred[2:], t[2:], True)
+    assert all(torch.allclose(2 * x, y) for x, y in zip(half, last))  # weight 0 drops the image
+
+
+def test_pool_gt_options(fewlabel, tmp_path):
+    import argparse
+    keys = ("student", "teacher", "steps", "eval_every", "batch_size", "lr", "lambda_t", "lambda_e",
+            "ramp", "clip", "no_pretrained", "data", "n_val", "val_scene_frac", "seed")
+    old = argparse.Namespace(**{k: 0 for k in keys})
+    new = argparse.Namespace(**{k: 0 for k in keys}, pool_gt=False, lambda_t_lab=1.0)
+    assert fewlabel.run_signature("gt", 4, 0, 32, new) == fewlabel.run_signature("gt", 4, 0, 32, old)
+    run(tmp_path, "--out", str(tmp_path / "r"), "--ckpt-dir", str(tmp_path / "ck"),
+        "--labeled", "100%", "--pool-gt", "--lambda-t-lab", "0")
+    done = torch.load(tmp_path / "ck" / "semi_edge_lab32_seed0.done.pt", weights_only=False)
+    assert done["signature"]["pool_gt"] and done["signature"]["lambda_t_lab"] == 0
+
+
 def test_evaluate_test_set(tmp_path):
     from PIL import Image
     test = tmp_path / "nyu" / "data" / "nyu2_test"
