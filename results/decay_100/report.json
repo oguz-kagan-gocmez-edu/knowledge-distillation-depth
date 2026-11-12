@@ -1,0 +1,209 @@
+{
+  "run": {
+    "git_commit": "f185d5348bf34add359c4019a4ffa089ca2ef349",
+    "git_branch": "main",
+    "git_dirty": false,
+    "command": "python3 scripts/fewlabel_v2.py --pool -1 --n-val 1000 --eval-every 3000 --steps 24000 --labeled 100% --recipes semi_edge --teacher-decay 0.5 --data /content/nyu_data.zip --cache-dir /content/cache --ckpt-dir /content/drive/MyDrive/Colab Notebooks/kd_depth/checkpoints/decay_100 --ckpt-every 1000 --out /content/drive/MyDrive/Colab Notebooks/kd_depth/results/decay_100",
+    "started_utc": "2026-11-12T13:39:26+00:00",
+    "python": "3.13.16",
+    "torch": "2.14.1+cu130",
+    "machine": "Linux-6.6.159+-x86_64-with-glibc2.39"
+  },
+  "config": {
+    "data": "/content/nyu_data.zip",
+    "pool": -1,
+    "labeled": "100%",
+    "n_val": 1000,
+    "val_scene_frac": 0.1,
+    "recipes": "semi_edge",
+    "seeds": "0",
+    "teacher": "small",
+    "teacher_batch": 8,
+    "student": "small",
+    "steps": 24000,
+    "eval_every": 3000,
+    "batch_size": 8,
+    "lr": 0.0005,
+    "lambda_t": 1.0,
+    "lambda_e": 0.5,
+    "ramp": 0.3,
+    "clip": 1.0,
+    "teacher_decay": 0.5,
+    "label_subset": 0,
+    "aug": false,
+    "aug_scale": 1.25,
+    "weight_decay": 0.0001,
+    "dropout": 0.0,
+    "device": "cuda",
+    "out": "/content/drive/MyDrive/Colab Notebooks/kd_depth/results/decay_100",
+    "cache_dir": "/content/cache",
+    "ckpt_dir": "/content/drive/MyDrive/Colab Notebooks/kd_depth/checkpoints/decay_100",
+    "ckpt_every": 1000,
+    "stop_after": 0,
+    "prepare_only": false,
+    "no_pretrained": false,
+    "no_cache": false,
+    "quick": false,
+    "seed": 0
+  },
+  "data": {
+    "rooms": 249,
+    "val_rooms": 25,
+    "pool": 46248,
+    "val": 1000
+  },
+  "reference": {
+    "teacher_aligned_optimistic": {
+      "AbsRel": 0.1103685274720192,
+      "RMSE": 0.5193847417831421,
+      "delta1": 0.8812449951171875,
+      "delta2": 0.9661920166015625,
+      "delta3": 0.9854695434570313,
+      "log10": 0.049365200102329254
+    },
+    "constant_depth": {
+      "AbsRel": 0.4062504172325134,
+      "RMSE": 1.3377697467803955,
+      "delta1": 0.35010308837890625,
+      "delta2": 0.6368956095377605,
+      "delta3": 0.8119043375651042,
+      "log10": 0.1692270189523697
+    }
+  },
+  "results": {
+    "46248/semi_edge": {
+      "labeled": 46248,
+      "recipe": "semi_edge",
+      "mean": {
+        "AbsRel": 0.15699997544288635,
+        "RMSE": 0.6279007792472839,
+        "delta1": 0.7610495402018229,
+        "delta2": 0.9476416829427083,
+        "delta3": 0.9881890665690104,
+        "log10": 0.069178506731987
+      },
+      "std": {
+        "AbsRel": 0.0,
+        "RMSE": 0.0,
+        "delta1": 0.0,
+        "delta2": 0.0,
+        "delta3": 0.0,
+        "log10": 0.0
+      },
+      "mean_last": {
+        "AbsRel": 0.15699997544288635,
+        "RMSE": 0.6279007792472839,
+        "delta1": 0.7610495402018229,
+        "delta2": 0.9476416829427083,
+        "delta3": 0.9881890665690104,
+        "log10": 0.069178506731987
+      },
+      "std_last": {
+        "AbsRel": 0.0,
+        "RMSE": 0.0,
+        "delta1": 0.0,
+        "delta2": 0.0,
+        "delta3": 0.0,
+        "log10": 0.0
+      },
+      "runs": [
+        {
+          "best": {
+            "AbsRel": 0.15699997544288635,
+            "RMSE": 0.6279007792472839,
+            "delta1": 0.7610495402018229,
+            "delta2": 0.9476416829427083,
+            "delta3": 0.9881890665690104,
+            "log10": 0.069178506731987,
+            "scale": 0.9501989483833313,
+            "step": 24000
+          },
+          "history": [
+            {
+              "AbsRel": 0.19796091318130493,
+              "RMSE": 0.7268576622009277,
+              "delta1": 0.6761122639973958,
+              "delta2": 0.9189194742838541,
+              "delta3": 0.9777651774088542,
+              "log10": 0.08368484675884247,
+              "scale": 0.9893885850906372,
+              "step": 3000
+            },
+            {
+              "AbsRel": 0.1800573468208313,
+              "RMSE": 0.7327427864074707,
+              "delta1": 0.6984038899739584,
+              "delta2": 0.9116913859049479,
+              "delta3": 0.9724107666015623,
+              "log10": 0.0820160061120987,
+              "scale": 0.9339526891708374,
+              "step": 6000
+            },
+            {
+              "AbsRel": 0.1760067343711853,
+              "RMSE": 0.6722644567489624,
+              "delta1": 0.7356310424804687,
+              "delta2": 0.9278624064127605,
+              "delta3": 0.9735942993164063,
+              "log10": 0.07577396929264069,
+              "scale": 0.9821499586105347,
+              "step": 9000
+            },
+            {
+              "AbsRel": 0.17357873916625977,
+              "RMSE": 0.6810243129730225,
+              "delta1": 0.7319772338867188,
+              "delta2": 0.9273944702148438,
+              "delta3": 0.9744305013020834,
+              "log10": 0.07632484287023544,
+              "scale": 0.9671853184700012,
+              "step": 12000
+            },
+            {
+              "AbsRel": 0.16363757848739624,
+              "RMSE": 0.6447686553001404,
+              "delta1": 0.753231424967448,
+              "delta2": 0.9381230061848957,
+              "delta3": 0.9807974853515625,
+              "log10": 0.07156826555728912,
+              "scale": 0.9766807556152344,
+              "step": 15000
+            },
+            {
+              "AbsRel": 0.1618918925523758,
+              "RMSE": 0.6436303853988647,
+              "delta1": 0.7503518880208333,
+              "delta2": 0.938336893717448,
+              "delta3": 0.982612569173177,
+              "log10": 0.07135230302810669,
+              "scale": 0.9625948667526245,
+              "step": 18000
+            },
+            {
+              "AbsRel": 0.1595182865858078,
+              "RMSE": 0.642467200756073,
+              "delta1": 0.7501431681315104,
+              "delta2": 0.9405071614583334,
+              "delta3": 0.9863907063802082,
+              "log10": 0.07111665606498718,
+              "scale": 0.9459935426712036,
+              "step": 21000
+            },
+            {
+              "AbsRel": 0.15699997544288635,
+              "RMSE": 0.6279007792472839,
+              "delta1": 0.7610495402018229,
+              "delta2": 0.9476416829427083,
+              "delta3": 0.9881890665690104,
+              "log10": 0.069178506731987,
+              "scale": 0.9501989483833313,
+              "step": 24000
+            }
+          ],
+          "minutes": 21.090408064966688
+        }
+      ]
+    }
+  },
+  "verdicts": {}
+}
