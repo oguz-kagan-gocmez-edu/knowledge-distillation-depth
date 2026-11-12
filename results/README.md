@@ -108,6 +108,28 @@ E1 and E4 are from `fix_1_short` and `main_5_short` (3 seeds).
 - Base E1 overfits: validation rises after 12k steps (0.190 → 0.196) while its training SILog
   falls to 0.046.
 
+### `reg_1_aug`, `reg_1_wd`, `reg_1_drop`: usual regularizers vs the teacher (1%, seed 0)
+
+One option at a time, all else as in `fix_1_short`. Training SILog is the labeled loss at the last
+step (lower = the labels are fit more closely).
+
+| Option | E1 gt | E4 semi_edge | E4 vs E1 | Final E1 → E4 | Training SILog E1 / E4 |
+|---|---|---|---|---|---|
+| none (`fix_1_short`, 3 seeds) | 0.199 | 0.176 | −11.2% | 0.200 → 0.181 | ~0.07 / – |
+| `--aug`: zoom-in crop ×1–1.25 and color jitter (`reg_1_aug`) | **0.195** | **0.173** | −11.0% | 0.195 → 0.183 | 0.064 / 0.125 |
+| `--weight-decay 0.01` instead of 1e-4 (`reg_1_wd`) | 0.198 | **0.173** | −12.9% | 0.199 → 0.175 | 0.046 / 0.139 |
+| `--dropout 0.2` before the decoder head (`reg_1_drop`) | 0.204 | 0.192 | −5.7% | 0.206 → 0.206 | 0.063 / 0.151 |
+
+- None of the three stops E1 from fitting its 462 images: its training SILog still ends at
+  0.05–0.06 and validation stays at 0.195–0.204. The best, augmentation, gains about 2%, within
+  the noise of a single seed.
+- Weight decay changes nothing. Most weights sit before a BatchNorm layer, so shrinking them does
+  not change what the network computes.
+- Dropout hurts E4 (0.176 → 0.192, best at 9k steps). E4 already fits the labels loosely because of
+  the teacher; adding dropout makes it underfit.
+- The teacher's gain (−11 to −13%) stays the same with augmentation or weight decay, so it adds
+  to them. Augmentation with the teacher gives the lowest 1% result so far (0.173).
+
 ### `budgets_25_100`: many labels (seed 0)
 
 | Labeled | Recipe | AbsRel ↓ | RMSE ↓ | δ<1.25 ↑ | Final AbsRel |
@@ -169,6 +191,12 @@ its step for each seed); **final** = the last step. δ1–δ3: share of pixels w
 | `budgets_25_100` | 25% (11,562) | E4 semi_edge | small | 24k | 1 | 0.168 | 0.670 | 0.743 | 0.931 | 0.976 | 0.074 | 21k | 0.171 | 0.683 | 0.733 |
 | `budgets_25_100` | 100% (46,248) | E1 gt | small | 24k | 1 | 0.153 | 0.595 | 0.781 | 0.954 | 0.987 | 0.066 | 24k | 0.153 | 0.595 | 0.781 |
 | `budgets_25_100` | 100% (46,248) | E4 semi_edge | small | 24k | 1 | 0.164 | 0.661 | 0.748 | 0.934 | 0.977 | 0.073 | 21k | 0.166 | 0.666 | 0.745 |
+| `reg_1_aug` | 1% (462) | E1 gt | small | 24k | 1 | 0.195 | 0.673 | 0.705 | 0.926 | 0.980 | 0.079 | 24k | 0.195 | 0.673 | 0.705 |
+| `reg_1_aug` | 1% (462) | E4 semi_edge | small | 24k | 1 | 0.173 | 0.663 | 0.739 | 0.932 | 0.979 | 0.075 | 18k | 0.183 | 0.668 | 0.730 |
+| `reg_1_wd` | 1% (462) | E1 gt | small | 24k | 1 | 0.198 | 0.716 | 0.668 | 0.911 | 0.977 | 0.085 | 21k | 0.199 | 0.712 | 0.670 |
+| `reg_1_wd` | 1% (462) | E4 semi_edge | small | 24k | 1 | 0.173 | 0.698 | 0.731 | 0.922 | 0.973 | 0.078 | 21k | 0.175 | 0.690 | 0.730 |
+| `reg_1_drop` | 1% (462) | E1 gt | small | 24k | 1 | 0.204 | 0.729 | 0.662 | 0.908 | 0.976 | 0.086 | 21k | 0.206 | 0.724 | 0.665 |
+| `reg_1_drop` | 1% (462) | E4 semi_edge | small | 24k | 1 | 0.192 | 0.710 | 0.687 | 0.917 | 0.974 | 0.082 | 9k | 0.206 | 0.709 | 0.680 |
 
 ---
 
