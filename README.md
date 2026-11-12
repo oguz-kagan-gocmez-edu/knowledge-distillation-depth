@@ -11,21 +11,23 @@ The goal is a model about 8× smaller than the teacher that runs in real time, a
 
 ## Current status
 
-Training runs are done except `gtmask_decay`; the test set is next. Validation AbsRel of the 3.15M student
+Training runs are done; the test set is next. Validation AbsRel of the 3.15M student
 (lower is better, the teacher gets 0.110):
 
-| Labeled images | Labels only (E1) | + teacher on unlabeled images (E4) | Change | E4 + teacher decay | Change |
-|---|---|---|---|---|---|
-| 1% (462) | 0.199 | 0.176 | −11% | **0.175** | **−12%** |
-| 5% (2,312) | 0.166 | 0.170 | +2.5% | **0.163** | **−2%** |
-| 25% (11,562) | **0.156** | 0.168 | +8% | 0.159 | +2% |
-| 100% (46,248) | **0.153** | 0.164 | +7% | 0.157 | +3% |
+| Labeled images | Labels only (E1) | + teacher on unlabeled images (E4) | Change | E4 + teacher decay | Change | + GT mask | Change |
+|---|---|---|---|---|---|---|---|
+| 1% (462) | 0.199 | 0.176 | −11% | **0.175** | **−12%** | 0.189 | −5% |
+| 5% (2,312) | 0.166 | 0.170 | +2.5% | 0.163 | −2% | **0.159** | **−4%** |
+| 25% (11,562) | 0.156 | 0.168 | +8% | 0.159 | +2% | **0.154** | **−1%** |
+| 100% (46,248) | **0.153** | 0.164 | +7% | 0.157 | +3% | 0.157 | +3% |
 
 - With very few labels the teacher helps, on every labeled subset and student size tried.
 - The gain comes from the teacher's targets on the unlabeled images; the edge loss adds nothing measurable.
 - With more labels the teacher holds the student back.
 - Fading the teacher out over the second half of training (teacher decay) keeps the gain with few
   labels and removes most of the harm with many.
+- Keeping the teacher off the labeled images (GT mask) gives the best 5% and 25% results, but at 1%
+  the teacher on the labeled images is what stops the student from memorizing them.
 
 Details for every run are in [results/README.md](results/README.md).
 

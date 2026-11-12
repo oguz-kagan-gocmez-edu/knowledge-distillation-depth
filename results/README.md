@@ -49,16 +49,18 @@ The tiny and base sizes are design targets; they are measured with the test set.
 
 ### Summary: effect of the teacher by label budget
 
-| Labeled | Images | Seeds | E1 gt | E4 semi_edge | E4 vs E1 | E4 + teacher decay | vs E1 | Folders |
-|---|---|---|---|---|---|---|---|---|
-| 1% | 462 | 3 | 0.199 | 0.176 | −11.2% | **0.175** | **−12.1%** | `fix_1_short`, `decay_1_5_25` |
-| 5% | 2,312 | 3 | 0.166 | 0.170 | +2.5% | **0.163** | **−1.8%** | `main_5_short`, `decay_1_5_25` |
-| 25% | 11,562 | 1 | **0.156** | 0.168 | +7.7% | 0.159 | +1.9% | `budgets_25_100`, `decay_1_5_25` |
-| 100% | 46,248 | 1 | **0.153** | 0.164 | +7.2% | 0.157 | +2.6% | `budgets_25_100`, `decay_100` |
+| Labeled | Images | Seeds | E1 gt | E4 semi_edge | E4 vs E1 | E4 + teacher decay | vs E1 | + GT mask | vs E1 | Folders |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1% | 462 | 3 | 0.199 | 0.176 | −11.2% | **0.175** | **−12.1%** | 0.189 | −5.0% | `fix_1_short`, `decay_1_5_25`, `gtmask_decay` |
+| 5% | 2,312 | 3 | 0.166 | 0.170 | +2.5% | 0.163 | −1.8% | **0.159** | **−4.2%** | `main_5_short`, `decay_1_5_25`, `gtmask_decay` |
+| 25% | 11,562 | 1 | 0.156 | 0.168 | +7.7% | 0.159 | +1.9% | **0.154** | **−1.3%** | `budgets_25_100`, `decay_1_5_25`, `gtmask_decay` |
+| 100% | 46,248 | 1 | **0.153** | 0.164 | +7.2% | 0.157 | +2.6% | 0.157 | +2.6% | `budgets_25_100`, `decay_100`, `gtmask_decay` |
 
 Best-checkpoint AbsRel; teacher decay runs have one seed. With a constant weight the teacher helps
 with very few labels and hurts with many. Letting its weight fall to 0 over the second half
 (`--teacher-decay 0.5`) keeps the gain at 1% and removes most of the harm at 5% to 100%.
+Also using the real depth of every labeled image in the batch and turning the teacher off on them
+(GT mask) gives the best 5% and 25% results, but loses half of the gain at 1%.
 
 ### `fix_1_short` and `main_5_short`: main comparison (3 seeds, mean)
 
@@ -152,6 +154,25 @@ falls linearly to 0 at 24k. E1 and E4 without decay are the 3-seed means of the 
 - With decay E4 is never clearly worse than E1 (all differences within ~2%, one seed).
 - At 25% the predicted scale drifts to ×0.93 at the last step.
 
+### `gtmask_decay`: teacher only on unlabeled images (E4 + decay, seed 0)
+
+`--pool-gt --lambda-t-lab 0` on top of `--teacher-decay 0.5`: SILog on every labeled image in the
+batch (also those drawn from the pool), teacher and edge losses only on unlabeled images.
+
+| Labeled | E1 gt | E4 + decay | + GT mask | Final AbsRel | Best at | Labeled SILog at 12k → 24k |
+|---|---|---|---|---|---|---|
+| 1% | 0.199 | **0.175** | 0.189 | 0.216 | 9k | 0.121 → 0.078 |
+| 5% | 0.166 | 0.163 | **0.159** | 0.160 | 21k | 0.164 → 0.109 |
+| 25% | 0.156 | 0.159 | **0.154** | 0.154 | 21k | 0.169 → 0.119 |
+| 100% | **0.153** | 0.157 | 0.157 | 0.157 | 24k | 0.122 → 0.091 |
+
+- At 1% the teacher on the labeled images was what kept the student from memorizing them. Without
+  it training SILog falls to 0.078 and validation rises from 9k steps on (0.189 → 0.216).
+- At 5% and 25% this is the best setting so far, 1–3% below E4 + decay (one seed, within noise).
+- At 100% every image is labeled, so the teacher and edge losses are 0 for the whole run and it is
+  E1 with a different sampler. It gets 0.157 against 0.153 for E1: two runs of nearly the same
+  setup differ by ~2.6%, a direct estimate of seed-to-seed noise.
+
 ### `budgets_25_100`: many labels (seed 0)
 
 | Labeled | Recipe | AbsRel ↓ | RMSE ↓ | δ<1.25 ↑ | Final AbsRel |
@@ -223,6 +244,10 @@ its step for each seed); **final** = the last step. δ1–δ3: share of pixels w
 | `decay_1_5_25` | 5% (2,312) | E4 semi_edge + decay | small | 24k | 1 | 0.163 | 0.631 | 0.749 | 0.945 | 0.987 | 0.071 | 24k | 0.163 | 0.631 | 0.749 |
 | `decay_1_5_25` | 25% (11,562) | E4 semi_edge + decay | small | 24k | 1 | 0.159 | 0.630 | 0.752 | 0.947 | 0.986 | 0.071 | 24k | 0.159 | 0.630 | 0.752 |
 | `decay_100` | 100% (46,248) | E4 semi_edge + decay | small | 24k | 1 | 0.157 | 0.628 | 0.761 | 0.948 | 0.988 | 0.069 | 24k | 0.157 | 0.628 | 0.761 |
+| `gtmask_decay` | 1% (462) | E4 semi_edge + decay + GT mask | small | 24k | 1 | 0.189 | 0.736 | 0.683 | 0.914 | 0.972 | 0.085 | 9k | 0.216 | 0.887 | 0.628 |
+| `gtmask_decay` | 5% (2,312) | E4 semi_edge + decay + GT mask | small | 24k | 1 | 0.159 | 0.654 | 0.753 | 0.938 | 0.985 | 0.071 | 21k | 0.160 | 0.640 | 0.760 |
+| `gtmask_decay` | 25% (11,562) | E4 semi_edge + decay + GT mask | small | 24k | 1 | 0.154 | 0.625 | 0.766 | 0.948 | 0.988 | 0.068 | 21k | 0.154 | 0.626 | 0.764 |
+| `gtmask_decay` | 100% (46,248) | E4 semi_edge + decay + GT mask | small | 24k | 1 | 0.157 | 0.606 | 0.769 | 0.948 | 0.987 | 0.068 | 24k | 0.157 | 0.606 | 0.769 |
 
 ---
 

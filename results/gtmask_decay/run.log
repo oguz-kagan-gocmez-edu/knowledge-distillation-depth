@@ -1,0 +1,67 @@
+Device: cuda | 1 recipes x 1 seeds x 24000 steps
+
+[1/3] Data (validation = held-out rooms) and teacher outputs
+  50688 images in 249 rooms -> 25 rooms held out for validation; pool 46248, val 1000
+  [pool] 46248 images from cache /content/cache/densedepth_pool46248_val300_seed0/pool
+  [val] 1000 images from cache /content/cache/densedepth_pool46248_seed0/val1000
+
+[2/3] Training: labeled [462, 2312, 11562, 46248] of 46248 images, recipes ['semi_edge']
+  -- E4 semi_edge, 462 labeled, seed 0
+    ~39 min left for this run
+    step  3000  gt 0.251  teacher 0.365  edge 0.213  | val AbsRel 0.221  d1 0.644  scale x1.03
+    step  6000  gt 0.157  teacher 0.236  edge 0.098  | val AbsRel 0.201  d1 0.644  scale x0.94
+    step  9000  gt 0.141  teacher 0.197  edge 0.086  | val AbsRel 0.189  d1 0.683  scale x0.97
+    step 12000  gt 0.121  teacher 0.172  edge 0.080  | val AbsRel 0.205  d1 0.670  scale x1.03
+    step 15000  gt 0.104  teacher 0.154  edge 0.075  | val AbsRel 0.201  d1 0.667  scale x0.99
+    step 18000  gt 0.090  teacher 0.141  edge 0.073  | val AbsRel 0.210  d1 0.644  scale x0.99
+    step 21000  gt 0.082  teacher 0.134  edge 0.071  | val AbsRel 0.209  d1 0.633  scale x0.95
+    step 24000  gt 0.078  teacher 0.132  edge 0.071  | val AbsRel 0.216  d1 0.628  scale x0.97
+  -- E4 semi_edge, 2312 labeled, seed 0
+    ~20 min left for this run
+    step  3000  gt 0.280  teacher 0.344  edge 0.204  | val AbsRel 0.198  d1 0.647  scale x0.94
+    step  6000  gt 0.189  teacher 0.219  edge 0.093  | val AbsRel 0.190  d1 0.674  scale x0.94
+    step  9000  gt 0.178  teacher 0.187  edge 0.083  | val AbsRel 0.172  d1 0.740  scale x0.98
+    step 12000  gt 0.164  teacher 0.167  edge 0.079  | val AbsRel 0.170  d1 0.720  scale x0.97
+    step 15000  gt 0.148  teacher 0.156  edge 0.078  | val AbsRel 0.165  d1 0.744  scale x0.97
+    step 18000  gt 0.130  teacher 0.149  edge 0.079  | val AbsRel 0.162  d1 0.750  scale x0.96
+    step 21000  gt 0.117  teacher 0.151  edge 0.081  | val AbsRel 0.159  d1 0.753  scale x0.96
+    step 24000  gt 0.109  teacher 0.157  edge 0.086  | val AbsRel 0.160  d1 0.760  scale x0.98
+  -- E4 semi_edge, 11562 labeled, seed 0
+    ~21 min left for this run
+    step  3000  gt 0.284  teacher 0.272  edge 0.163  | val AbsRel 0.190  d1 0.689  scale x0.97
+    step  6000  gt 0.198  teacher 0.175  edge 0.075  | val AbsRel 0.174  d1 0.719  scale x0.97
+    step  9000  gt 0.183  teacher 0.151  edge 0.067  | val AbsRel 0.173  d1 0.735  scale x0.98
+    step 12000  gt 0.169  teacher 0.137  edge 0.065  | val AbsRel 0.164  d1 0.740  scale x0.97
+    step 15000  gt 0.153  teacher 0.129  edge 0.065  | val AbsRel 0.158  d1 0.768  scale x0.98
+    step 18000  gt 0.137  teacher 0.124  edge 0.065  | val AbsRel 0.157  d1 0.758  scale x0.96
+    step 21000  gt 0.125  teacher 0.125  edge 0.067  | val AbsRel 0.154  d1 0.766  scale x0.96
+    step 24000  gt 0.119  teacher 0.129  edge 0.070  | val AbsRel 0.154  d1 0.764  scale x0.95
+  -- E4 semi_edge, 46248 labeled, seed 0
+    ~20 min left for this run
+    step  3000  gt 0.269  teacher 0.000  edge 0.000  | val AbsRel 0.192  d1 0.690  scale x1.01
+    step  6000  gt 0.171  teacher 0.000  edge 0.000  | val AbsRel 0.174  d1 0.721  scale x0.95
+    step  9000  gt 0.141  teacher 0.000  edge 0.000  | val AbsRel 0.169  d1 0.760  scale x1.00
+    step 12000  gt 0.122  teacher 0.000  edge 0.000  | val AbsRel 0.163  d1 0.760  scale x0.97
+    step 15000  gt 0.109  teacher 0.000  edge 0.000  | val AbsRel 0.157  d1 0.757  scale x0.96
+    step 18000  gt 0.099  teacher 0.000  edge 0.000  | val AbsRel 0.158  d1 0.755  scale x0.94
+    step 21000  gt 0.094  teacher 0.000  edge 0.000  | val AbsRel 0.157  d1 0.766  scale x0.96
+    step 24000  gt 0.091  teacher 0.000  edge 0.000  | val AbsRel 0.157  d1 0.769  scale x0.96
+
+[3/3] Summary
+---------------------------------------------------------------------------------------------
+FEW-LABEL TEST  (validation: 1000 images from held-out rooms, best checkpoint; last = AbsRel at the final step)
+---------------------------------------------------------------------------------------------
+Labeled       Recipe            AbsRel    RMSE  d<1.25     vs gt  scale  best@           last
+462 (0.999%)  E4 semi_edge       0.189   0.736   0.683            x0.97   9000          0.216
+---------------------------------------------------------------------------------------------
+2312 (5%)     E4 semi_edge       0.159   0.654   0.753            x0.96  21000          0.160
+---------------------------------------------------------------------------------------------
+11562 (25%)   E4 semi_edge       0.154   0.625   0.766            x0.96  21000          0.154
+---------------------------------------------------------------------------------------------
+46248 (100%)  E4 semi_edge       0.157   0.606   0.769            x0.96  24000          0.157
+---------------------------------------------------------------------------------------------
+Reference     constant depth     0.402   1.345   0.343
+Reference     teacher (opt.)     0.110   0.519   0.881
+---------------------------------------------------------------------------------------------
+Note: one seed only. Differences below ~3% may be noise; use --seeds 0,1,2 to check.
+Saved: /content/drive/MyDrive/Colab Notebooks/kd_depth/results/gtmask_decay/report.json and /content/drive/MyDrive/Colab Notebooks/kd_depth/results/gtmask_decay/examples.png

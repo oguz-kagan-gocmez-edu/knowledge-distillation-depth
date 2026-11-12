@@ -37,7 +37,7 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `fix_1_decay` | optional: E4 at 1%, teacher weight falls to 0 over the second half | 63k | 3 | 4 | skipped (24k steps fixed the degradation) |
 | `decay_1_5_25` | E4 at 1%, 5% and 25% with `--teacher-decay 0.5`: does the decay remove the harm with many labels? | 24k | 3 | 1.5 | done |
 | `decay_100` | E4 at 100% with `--teacher-decay 0.5`, to complete the budget table | 24k | 1 | 0.5 | done |
-| `gtmask_decay` | E4 + decay at 1–100% with `--pool-gt --lambda-t-lab 0`: real depth on every labeled image in the batch, teacher only on unlabeled ones | 24k | 4 | 1.5 | to do |
+| `gtmask_decay` | E4 + decay at 1–100% with `--pool-gt --lambda-t-lab 0`: real depth on every labeled image in the batch, teacher only on unlabeled ones | 24k | 4 | 1.5 | done |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
