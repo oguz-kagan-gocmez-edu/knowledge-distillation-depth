@@ -118,6 +118,49 @@ def test_new_options_keep_old_signatures(fewlabel):
     assert "teacher_decay" not in fewlabel.run_signature("gt", 4, 0, 32, args)   # old checkpoints resume
     args.label_subset = 2
     assert fewlabel.run_signature("gt", 4, 0, 32, args)["label_subset"] == 2
+    # regularization options: defaults leave the signature unchanged, other values are stored
+    args = argparse.Namespace(**{k: 0 for k in keys}, teacher_decay=0.0, label_subset=0,
+                              aug=False, aug_scale=1.25, weight_decay=1e-4, dropout=0.0)
+    old = argparse.Namespace(**{k: 0 for k in keys}, teacher_decay=0.0, label_subset=0)
+    assert fewlabel.run_signature("gt", 4, 0, 32, args) == fewlabel.run_signature("gt", 4, 0, 32, old)
+    args.aug, args.weight_decay, args.dropout = True, 0.01, 0.2
+    sig = fewlabel.run_signature("gt", 4, 0, 32, args)
+    assert (sig["aug"], sig["aug_scale"], sig["weight_decay"], sig["dropout"]) == (True, 1.25, 0.01, 0.2)
+
+
+def test_augment(fewlabel):
+    g = lambda: torch.Generator().manual_seed(0)
+    x = torch.rand(4, 3, 24, 32)
+    d = torch.full((4, 24, 32), 2.0)
+    d[:, :, :8] = 0                                                    # unlabeled pixels
+    t = torch.rand(4, 24, 32)
+    xa, da, ta = fewlabel.augment(x, d, t, g())
+    assert xa.shape == x.shape and da.shape == d.shape and ta.shape == t.shape
+    assert 0 <= xa.min() and xa.max() <= 1
+    valid = da[da > 0]
+    assert valid.min() >= 2.0 / 1.25 - 1e-5 and valid.max() <= 2.0 + 1e-5  # depth / zoom
+    assert (da == 0).any()                                             # no label stays no label
+    xb, db, tb = fewlabel.augment(x, d, t, g())                        # same seed, same result
+    assert torch.equal(xa, xb) and torch.equal(da, db) and torch.equal(ta, tb)
+    _, d1, t1 = fewlabel.augment(x, d, t, g(), max_scale=1.0)          # no zoom: geometry unchanged
+    assert torch.allclose(d1, d) and torch.allclose(t1, t, atol=1e-5)
+
+
+def test_dropout_keeps_weight_names():
+    from kd_depth.core import Student
+    a, b = Student("tiny", pretrained=False), Student("tiny", pretrained=False, dropout=0.2)
+    assert a.state_dict().keys() == b.state_dict().keys()             # old weights still load
+    b.load_state_dict(a.state_dict())
+    b.eval()
+    x = torch.rand(1, 3, 192, 256)
+    assert torch.equal(a.eval()(x), b(x))                              # no dropout at test time
+
+
+def test_regularization_options_run(tmp_path):
+    run(tmp_path, "--out", str(tmp_path / "r"), "--ckpt-dir", str(tmp_path / "ck"),
+        "--aug", "--weight-decay", "0.01", "--dropout", "0.2")
+    done = torch.load(tmp_path / "ck" / "semi_edge_lab8_seed0.done.pt", weights_only=False)
+    assert done["signature"]["aug"] and done["signature"]["dropout"] == 0.2
 
 
 def test_evaluate_test_set(tmp_path):
