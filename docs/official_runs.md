@@ -38,6 +38,7 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `decay_1_5_25` | E4 at 1%, 5% and 25% with `--teacher-decay 0.5`: does the decay remove the harm with many labels? | 24k | 3 | 1.5 | done |
 | `decay_100` | E4 at 100% with `--teacher-decay 0.5`, to complete the budget table | 24k | 1 | 0.5 | done |
 | `gtmask_decay` | E4 + decay at 1–100% with `--pool-gt --lambda-t-lab 0`: real depth on every labeled image in the batch, teacher only on unlabeled ones | 24k | 4 | 1.5 | done |
+| `gtmask_seeds` | `gtmask_decay` at 5% and 25% with seeds 1 and 2 | 24k | 4 | 1.5 | to do |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -91,4 +92,9 @@ E1, and the teacher pulled against the real depth on every labeled pixel. `--poo
 real depth of every labeled image in the batch and `--lambda-t-lab 0` turns the teacher off on
 them (Hu et al. use 0.1 there). Compare with `decay_1_5_25` and `decay_100`. At 100% every image
 is labeled, so the teacher is off entirely and the run should match E1: a sanity check.
+
+**Why `gtmask_seeds`:** `gtmask_decay` gave the best 5% and 25% results (0.159 and 0.154), but
+with one seed and 1–3% below E4 + decay. Seeds 1 and 2 give a 3-seed mean to compare with E1 at
+5% (`main_5_short`, 0.166 ± 0.001). The labeled subset stays the same (it depends on `--seed`, not
+`--seeds`), as in `main_5_short`. Run before the test set.
 
