@@ -49,14 +49,16 @@ The tiny and base sizes are design targets; they are measured with the test set.
 
 ### Summary: effect of the teacher by label budget
 
-| Labeled | Images | Seeds | E1 gt | E4 semi_edge | E4 vs E1 | Folder |
-|---|---|---|---|---|---|---|
-| 1% | 462 | 3 | 0.199 | **0.176** | **−11.2%** | `fix_1_short` |
-| 5% | 2,312 | 3 | **0.166** | 0.170 | +2.5% | `main_5_short` |
-| 25% | 11,562 | 1 | **0.156** | 0.168 | +7.7% | `budgets_25_100` |
-| 100% | 46,248 | 1 | **0.153** | 0.164 | +7.2% | `budgets_25_100` |
+| Labeled | Images | Seeds | E1 gt | E4 semi_edge | E4 vs E1 | E4 + teacher decay | vs E1 | Folders |
+|---|---|---|---|---|---|---|---|---|
+| 1% | 462 | 3 | 0.199 | 0.176 | −11.2% | **0.175** | **−12.1%** | `fix_1_short`, `decay_1_5_25` |
+| 5% | 2,312 | 3 | 0.166 | 0.170 | +2.5% | **0.163** | **−1.8%** | `main_5_short`, `decay_1_5_25` |
+| 25% | 11,562 | 1 | **0.156** | 0.168 | +7.7% | 0.159 | +1.9% | `budgets_25_100`, `decay_1_5_25` |
+| 100% | 46,248 | 1 | **0.153** | 0.164 | +7.2% | running | | `budgets_25_100`, `decay_100` |
 
-Best-checkpoint AbsRel. The teacher helps with very few labels and hurts with many.
+Best-checkpoint AbsRel; teacher decay runs have one seed. With a constant weight the teacher helps
+with very few labels and hurts with many. Letting its weight fall to 0 over the second half
+(`--teacher-decay 0.5`) keeps the gain at 1% and removes most of the harm at 5% and 25%.
 
 ### `fix_1_short` and `main_5_short`: main comparison (3 seeds, mean)
 
@@ -130,6 +132,25 @@ step (lower = the labels are fit more closely).
 - The teacher's gain (−11 to −13%) stays the same with augmentation or weight decay, so it adds
   to them. Augmentation with the teacher gives the lowest 1% result so far (0.173).
 
+### `decay_1_5_25`: teacher weight falls to 0 over the second half (E4, seed 0)
+
+`--teacher-decay 0.5`: after the usual ramp the teacher weight stays at 1 until 12k steps, then
+falls linearly to 0 at 24k. E1 and E4 without decay are the 3-seed means of the summary table
+(25%: seed 0 of `budgets_25_100`).
+
+| Labeled | E1 gt | E4 | E4 + decay | Final AbsRel | Best at | Labeled SILog at 12k → 24k |
+|---|---|---|---|---|---|---|
+| 1% | 0.199 | 0.176 | **0.175** | 0.183 | 15k | 0.162 → 0.098 |
+| 5% | 0.166 | 0.170 | **0.163** | 0.163 | 24k | 0.186 → 0.126 |
+| 25% | **0.156** | 0.168 | 0.159 | 0.159 | 24k | 0.196 → 0.138 |
+
+- At 1% the student starts to fit its labels once the teacher fades (training SILog 0.162 → 0.098)
+  and validation rises again (0.175 → 0.183): without the teacher the overfitting comes back.
+- At 5% and 25% validation keeps improving to the last step: here the teacher had been keeping
+  the student from fitting the labels, and the decay lifts that limit.
+- With decay E4 is never clearly worse than E1 (all differences within ~2%, one seed).
+- At 25% the predicted scale drifts to ×0.93 at the last step.
+
 ### `budgets_25_100`: many labels (seed 0)
 
 | Labeled | Recipe | AbsRel ↓ | RMSE ↓ | δ<1.25 ↑ | Final AbsRel |
@@ -197,6 +218,9 @@ its step for each seed); **final** = the last step. δ1–δ3: share of pixels w
 | `reg_1_wd` | 1% (462) | E4 semi_edge | small | 24k | 1 | 0.173 | 0.698 | 0.731 | 0.922 | 0.973 | 0.078 | 21k | 0.175 | 0.690 | 0.730 |
 | `reg_1_drop` | 1% (462) | E1 gt | small | 24k | 1 | 0.204 | 0.729 | 0.662 | 0.908 | 0.976 | 0.086 | 21k | 0.206 | 0.724 | 0.665 |
 | `reg_1_drop` | 1% (462) | E4 semi_edge | small | 24k | 1 | 0.192 | 0.710 | 0.687 | 0.917 | 0.974 | 0.082 | 9k | 0.206 | 0.709 | 0.680 |
+| `decay_1_5_25` | 1% (462) | E4 semi_edge + decay | small | 24k | 1 | 0.175 | 0.680 | 0.735 | 0.926 | 0.974 | 0.076 | 15k | 0.183 | 0.724 | 0.720 |
+| `decay_1_5_25` | 5% (2,312) | E4 semi_edge + decay | small | 24k | 1 | 0.163 | 0.631 | 0.749 | 0.945 | 0.987 | 0.071 | 24k | 0.163 | 0.631 | 0.749 |
+| `decay_1_5_25` | 25% (11,562) | E4 semi_edge + decay | small | 24k | 1 | 0.159 | 0.630 | 0.752 | 0.947 | 0.986 | 0.071 | 24k | 0.159 | 0.630 | 0.752 |
 
 ---
 
