@@ -97,14 +97,61 @@ def evaluate(model, rgb, depth, device, bs=16):
             for view, ms in acc.items()}
 
 
+def run_group(r):
+    """Run folder (e.g. fix_1_short) of a checkpoint; settings like --aug are only told apart by it."""
+    return r.get("group") or Path(r["file"]).parent.name
+
+
+def summarize(runs):
+    """Mean +- std over seeds for each run folder and setting; prints the table and returns it."""
+    groups = {}
+    for r in runs:
+        key = (run_group(r), r["student"], r["steps"], r["teacher_decay"], r["n_lab"], r["recipe"],
+               r["model"])
+        groups.setdefault(key, []).append(r)
+    summary = []
+    line = "-" * 120
+    print(f"\n{line}\nTEST SET (654 images, Eigen crop, cap 10 m); mean ± std over seeds\n{line}")
+    print(f"{'group':<16}{'student':<8}{'steps':>7}{'labeled':>9}  {'recipe':<13}{'model':<7}{'n':>3}"
+          f"{'AbsRel':>15}{'RMSE':>8}{'d1':>7}{'aligned':>9}{'far RMSE':>10}")
+    for key in sorted(groups, key=lambda k: (k[1], k[2], k[4], k[0], k[6], k[5])):
+        rs = groups[key]
+        agg = {view: {k: [float(np.mean([r["metrics"][view][k] for r in rs])),
+                          float(np.std([r["metrics"][view][k] for r in rs]))]
+                      for k in rs[0]["metrics"][view] if k != "pixels"}
+               for view in rs[0]["metrics"] if all(view in r["metrics"] for r in rs)}
+        summary.append({"group": key[0], "student": key[1], "steps": key[2], "teacher_decay": key[3],
+                        "n_lab": key[4], "recipe": key[5], "model": key[6],
+                        "seeds": sorted(r["seed"] for r in rs), "metrics": agg})
+        raw = agg["raw"]
+        far = f"{agg['far']['RMSE'][0]:.3f}" if "far" in agg else "-"
+        exp = fl.RECIPES[key[5]]["exp"] + " " + key[5]
+        print(f"{key[0]:<16}{key[1]:<8}{key[2]:>7}{key[4]:>9}  {exp:<13}{key[6]:<7}{len(rs):>3}"
+              f"{raw['AbsRel'][0]:>9.3f}±{raw['AbsRel'][1]:.3f}{raw['RMSE'][0]:>8.3f}"
+              f"{raw['delta1'][0]:>7.3f}{agg['aligned']['AbsRel'][0]:>9.3f}{far:>10}")
+    print(line)
+    return summary
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", default="data/nyu_data", help="DenseDepth zip or folder (with nyu2_test.csv)")
-    ap.add_argument("--ckpt-dir", nargs="+", required=True, help="folder(s) with .done.pt files")
+    ap.add_argument("--ckpt-dir", nargs="+", help="folder(s) with .done.pt files")
     ap.add_argument("--which", default="best,final", help="best and/or final model of each run")
     ap.add_argument("--out", default="results/test")
     ap.add_argument("--device", default="auto")
+    ap.add_argument("--resummarize", metavar="REPORT",
+                    help="rebuild the summary of an existing report.json without evaluating again")
     args = ap.parse_args()
+    if args.resummarize:
+        path = Path(args.resummarize)
+        report = json.loads(path.read_text())
+        report["summary"] = summarize(report["runs"])
+        path.write_text(json.dumps(report, indent=1))
+        print(f"Saved: {path}")
+        return
+    if not args.ckpt_dir:
+        ap.error("--ckpt-dir is required")
     device = fz.pick_device(args.device)
     which = [w.strip() for w in args.which.split(",")]
 
@@ -125,7 +172,8 @@ def main():
                 model = fz.Student(sig["student"], pretrained=False).to(device)
                 model.load_state_dict(state)
                 m = evaluate(model, rgb, depth, device)
-                runs.append({"file": str(f), "model": w, "recipe": sig["recipe"], "n_lab": sig["n_lab"],
+                runs.append({"file": str(f), "group": f.parent.name, "model": w, "recipe": sig["recipe"],
+                             "n_lab": sig["n_lab"],
                              "seed": sig["train_seed"], "student": sig["student"],
                              "label_subset": sig.get("label_subset", 0),
                              "teacher_decay": sig.get("teacher_decay", 0.0), "steps": sig["steps"],
@@ -138,32 +186,7 @@ def main():
     if not runs:
         raise SystemExit("nothing to evaluate")
 
-    # mean +- std over seeds for each setting
-    groups = {}
-    for r in runs:
-        key = (r["student"], r["steps"], r["teacher_decay"], r["n_lab"], r["recipe"], r["model"])
-        groups.setdefault(key, []).append(r)
-    summary = []
-    line = "-" * 104
-    print(f"\n{line}\nTEST SET (654 images, Eigen crop, cap 10 m); mean ± std over seeds\n{line}")
-    print(f"{'student':<8}{'steps':>7}{'decay':>6}{'labeled':>9}  {'recipe':<12}{'model':<7}{'n':>3}"
-          f"{'AbsRel':>15}{'RMSE':>8}{'d1':>7}{'aligned':>9}{'far RMSE':>10}")
-    for key in sorted(groups, key=lambda k: (k[0], k[1], k[2], k[3], k[5], k[4])):
-        rs = groups[key]
-        agg = {view: {k: [float(np.mean([r["metrics"][view][k] for r in rs])),
-                          float(np.std([r["metrics"][view][k] for r in rs]))]
-                      for k in rs[0]["metrics"][view] if k != "pixels"}
-               for view in rs[0]["metrics"] if all(view in r["metrics"] for r in rs)}
-        summary.append({"student": key[0], "steps": key[1], "teacher_decay": key[2], "n_lab": key[3],
-                        "recipe": key[4], "model": key[5], "seeds": sorted(r["seed"] for r in rs),
-                        "metrics": agg})
-        raw = agg["raw"]
-        far = f"{agg['far']['RMSE'][0]:.3f}" if "far" in agg else "-"
-        exp = fl.RECIPES[key[4]]["exp"] + " " + key[4]
-        print(f"{key[0]:<8}{key[1]:>7}{key[2]:>6.2g}{key[3]:>9}  {exp:<12}{key[5]:<7}{len(rs):>3}"
-              f"{raw['AbsRel'][0]:>9.3f}±{raw['AbsRel'][1]:.3f}{raw['RMSE'][0]:>8.3f}"
-              f"{raw['delta1'][0]:>7.3f}{agg['aligned']['AbsRel'][0]:>9.3f}{far:>10}")
-    print(line)
+    summary = summarize(runs)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

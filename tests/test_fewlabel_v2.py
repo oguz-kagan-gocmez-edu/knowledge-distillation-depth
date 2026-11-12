@@ -206,3 +206,13 @@ def test_evaluate_test_set(tmp_path):
     assert {(s["recipe"], s["model"]) for s in rep["summary"]} == {
         (r, m) for r in ("gt", "semi_edge") for m in ("best", "final")}
     assert {"raw", "aligned"} <= set(rep["summary"][0]["metrics"])
+    assert {s["group"] for s in rep["summary"]} == {"ck"}
+    # reports written before runs kept their folder: the group comes from the file path
+    for r in rep["runs"]:
+        del r["group"]
+    rep["summary"] = []
+    (tmp_path / "t" / "report.json").write_text(json.dumps(rep))
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "evaluate_test.py"), "--resummarize",
+                    str(tmp_path / "t" / "report.json")], check=True, capture_output=True, text=True)
+    again = json.loads((tmp_path / "t" / "report.json").read_text())
+    assert len(again["summary"]) == 4 and {s["group"] for s in again["summary"]} == {"ck"}
