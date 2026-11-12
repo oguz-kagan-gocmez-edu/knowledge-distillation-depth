@@ -264,10 +264,44 @@ def run_signature(recipe, n_lab, seed, n_pool, args):
             "lambda_e", "ramp", "clip", "no_pretrained", "data", "n_val", "val_scene_frac", "seed")
     sig = {"recipe": recipe, "n_lab": n_lab, "train_seed": seed, "n_pool": n_pool,
            **{k: getattr(args, k) for k in keys}}
-    for k in ("teacher_decay", "label_subset"):          # added later: only stored when used,
-        if getattr(args, k, 0):                          # so older checkpoints still resume
+    # added later: only stored when they differ from the default, so older checkpoints still resume
+    for k, default in OPTIONAL_DEFAULTS.items():
+        if getattr(args, k, default) != default:
             sig[k] = getattr(args, k)
+    if getattr(args, "aug", False):
+        sig["aug_scale"] = args.aug_scale
     return sig
+
+
+OPTIONAL_DEFAULTS = {"teacher_decay": 0.0, "label_subset": 0, "aug": False,
+                     "weight_decay": 1e-4, "dropout": 0.0}
+
+
+def augment(x, d, t, gen, max_scale=1.25):
+    """Random zoom-in crop and color jitter on a batch (already on its device).
+
+    x: (B, 3, H, W) RGB in [0, 1]; d: (B, H, W) real depth in meters, 0 = no label;
+    t: (B, H, W) teacher disparity. Zooming in by s makes the scene look s times closer,
+    so the real depth is divided by s (Eigen et al. 2014). The teacher target is scale-and-shift
+    invariant, so it is only cropped. Color changes only affect the student's input, as in
+    Depth Anything's perturbed student. The crop never leaves the image, so there are no borders.
+    """
+    b, dev = x.shape[0], x.device
+    u = lambda lo, hi, *shape: (lo + (hi - lo) * torch.rand(b, *shape, generator=gen)).to(dev)
+    s = u(1.0, max_scale)
+    room = 1 - 1 / s                                       # how far the crop can move
+    theta = torch.zeros(b, 2, 3, device=dev)
+    theta[:, 0, 0] = theta[:, 1, 1] = 1 / s
+    theta[:, 0, 2], theta[:, 1, 2] = u(-1, 1) * room, u(-1, 1) * room
+    grid = F.affine_grid(theta, list(x.shape), align_corners=False)
+    x = F.grid_sample(x, grid, mode="bilinear", padding_mode="border", align_corners=False)
+    d = F.grid_sample(d[:, None].float(), grid, mode="nearest", padding_mode="zeros",
+                      align_corners=False)[:, 0] / s.view(b, 1, 1)
+    t = F.grid_sample(t[:, None], grid, mode="bilinear", padding_mode="border",
+                      align_corners=False)[:, 0]
+    gamma, bright, color = u(0.9, 1.1, 1, 1, 1), u(0.75, 1.25, 1, 1, 1), u(0.9, 1.1, 3, 1, 1)
+    x = (x.clamp(0, 1) ** gamma * bright * color).clamp(0, 1)
+    return x, d, t
 
 
 def labeled_indices(n_lab, n_pool, subset):
@@ -329,8 +363,9 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
 
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
-    model = fz.Student(args.student, pretrained=not args.no_pretrained).to(device)
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
+    model = fz.Student(args.student, pretrained=not args.no_pretrained,
+                       dropout=args.dropout).to(device)
+    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps,
                                                 pct_start=max(0.1, 3 / args.steps))
     rgb, depth, disp = pool["rgb"], pool["depth"], pool["disp"]   # numpy, maybe memory-mapped
@@ -374,6 +409,8 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         flip = torch.rand(bs, generator=gen) < 0.5
         x[flip], d[flip], t[flip] = x[flip].flip(-1), d[flip].flip(-1), t[flip].flip(-1)
         x, d, t, is_lab = x.to(device), d.to(device), t.to(device), is_lab.to(device)
+        if args.aug:
+            x, d, t = augment(x, d, t, gen, args.aug_scale)
 
         pred = model(x)
         mask = (d > MIN_D) & (d < MAX_D) & is_lab.view(-1, 1, 1)
@@ -472,6 +509,12 @@ def main():
     ap.add_argument("--label-subset", type=int, default=0,
                     help="which images are labeled: 0 = first N of the pool (default), "
                          "k > 0 = first N of a random order seeded by k")
+    ap.add_argument("--aug", action="store_true",
+                    help="random zoom-in crop (real depth divided by the zoom) and color jitter")
+    ap.add_argument("--aug-scale", type=float, default=1.25, help="largest zoom of --aug")
+    ap.add_argument("--weight-decay", type=float, default=1e-4, help="AdamW weight decay")
+    ap.add_argument("--dropout", type=float, default=0.0,
+                    help="channel dropout before the decoder head (0 = off)")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/fewlabel_v2")
     ap.add_argument("--cache-dir", default="cache",

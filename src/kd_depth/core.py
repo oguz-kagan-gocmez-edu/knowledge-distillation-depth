@@ -339,7 +339,7 @@ class Student(nn.Module):
     # name: (encoder, decoder width)  ->  about 1.0M / 3.2M / 4.2M parameters
     SIZES = {"tiny": ("mnv3_small", 16), "small": ("mnv3_large", 32), "base": ("effnet_b0", 32)}
 
-    def __init__(self, size="small", pretrained=True):
+    def __init__(self, size="small", pretrained=True, dropout=0.0):
         super().__init__()
         from torchvision import models
 
@@ -374,6 +374,8 @@ class Student(nn.Module):
         for s in (16, 8, 4, 2):
             self.ups.append(dwsep(cin + taps[s][1], widths[s]))
             cin = widths[s]
+        # no parameters, so weights saved with or without dropout load into either model
+        self.drop = nn.Dropout2d(dropout) if dropout > 0 else nn.Identity()
         self.head = nn.Sequential(dwsep(cin, widths[1]), nn.Conv2d(widths[1], 1, 3, padding=1))
         self.register_buffer("mean", torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
         self.register_buffer("std", torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
@@ -391,7 +393,7 @@ class Student(nn.Module):
             y = F.interpolate(y, size=skips[s].shape[-2:], mode="bilinear", align_corners=False)
             y = up(torch.cat([y, skips[s]], 1))
         y = F.interpolate(y, size=size, mode="bilinear", align_corners=False)
-        y = self.head(y)[:, 0]
+        y = self.head(self.drop(y))[:, 0]
         return MIN_D + (MAX_D - MIN_D) * torch.sigmoid(y)   # depth in meters
 
 
