@@ -39,6 +39,7 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `decay_100` | E4 at 100% with `--teacher-decay 0.5`, to complete the budget table | 24k | 1 | 0.5 | done |
 | `gtmask_decay` | E4 + decay at 1–100% with `--pool-gt --lambda-t-lab 0`: real depth on every labeled image in the batch, teacher only on unlabeled ones | 24k | 4 | 1.5 | done |
 | `gtmask_seeds` | `gtmask_decay` at 5% and 25% with seeds 1 and 2 | 24k | 4 | 1.5 | to do |
+| `e1_25_seeds` | E1 at 25% with seeds 1 and 2, the baseline for `gtmask_seeds` at 25% | 24k | 2 | 0.7 | to do |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -98,3 +99,10 @@ with one seed and 1–3% below E4 + decay. Seeds 1 and 2 give a 3-seed mean to c
 5% (`main_5_short`, 0.166 ± 0.001). The labeled subset stays the same (it depends on `--seed`, not
 `--seeds`), as in `main_5_short`. Run before the test set.
 
+**Why `e1_25_seeds`:** at 100% labels `gtmask_decay` turns the teacher off on every image, so it
+trains like E1: the training loss matches E1 to the third decimal at every evaluation and the
+teacher loss stays at 0. Its validation AbsRel still ends at 0.157 against 0.153 for E1, only
+because the batches come in another order. So one seed can move AbsRel by ~0.004 (~2.5%) at 25–100%,
+and the 25% results (E1 0.156, E4 + decay 0.159, GT mask 0.154) cannot be told apart yet. E1 at 25%
+has one seed; these two runs give it a 3-seed mean next to `gtmask_seeds`. The two groups can run at
+the same time on two sessions. Run before the test set.
