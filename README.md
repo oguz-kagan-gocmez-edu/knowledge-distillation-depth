@@ -11,7 +11,7 @@ The goal is a model about 8× smaller than the teacher that runs in real time, a
 
 ## Current status
 
-Training runs are done; the test set is next. Validation AbsRel of the 3.15M student
+Training and the test set are done; the report is next. Validation AbsRel of the 3.15M student
 (lower is better, the teacher gets 0.110):
 
 | Labeled images | Labels only (E1) | + teacher on unlabeled images (E4) | Change | E4 + teacher decay | Change | + GT mask | Change |
@@ -28,6 +28,18 @@ Training runs are done; the test set is next. Validation AbsRel of the 3.15M stu
   labels and removes most of the harm with many.
 - Keeping the teacher off the labeled images (GT mask) gives the best 5% and 25% results, but at 1%
   the teacher on the labeled images is what stops the student from memorizing them.
+
+**Test set** (654 NYU images, evaluated once at the end; 3 seeds where ± is shown):
+
+| Labeled images | Labels only (E1) | E4 | E4 + decay | E4 + decay + GT mask | Best vs E1 |
+|---|---|---|---|---|---|
+| 1% (462) | 0.195 ± 0.001 | **0.169 ± 0.003** | 0.177 | 0.188 | **−13%** |
+| 5% (2,312) | 0.166 ± 0.001 | 0.164 ± 0.001 | 0.159 | **0.158 ± 0.003** | **−5%** |
+| 25% (11,562) | 0.154 ± 0.000 | 0.157 | 0.153 | **0.151 ± 0.001** | −2% |
+| 100% (46,248) | **0.150** | 0.155 | 0.151 | 0.152 | – |
+
+With all labels the small student reaches AbsRel 0.150, RMSE 0.526 and δ1 0.794, in the range of
+published full-size models from 2015–2016 (see the comparison in the results file).
 
 Details for every run are in [results/README.md](results/README.md).
 

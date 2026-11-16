@@ -1,0 +1,28 @@
+Device: cuda
+Loading the test set from /content/nyu_data.zip ...
+  654 test images
+  gtmask_seeds/semi_edge_lab11562_seed1.done.pt [best]  AbsRel 0.150  RMSE 0.548  d1 0.781  (aligned AbsRel 0.123)
+  gtmask_seeds/semi_edge_lab11562_seed1.done.pt [final]  AbsRel 0.150  RMSE 0.548  d1 0.781  (aligned AbsRel 0.123)
+  gtmask_seeds/semi_edge_lab11562_seed2.done.pt [best]  AbsRel 0.151  RMSE 0.539  d1 0.780  (aligned AbsRel 0.124)
+  gtmask_seeds/semi_edge_lab11562_seed2.done.pt [final]  AbsRel 0.151  RMSE 0.539  d1 0.780  (aligned AbsRel 0.124)
+  gtmask_seeds/semi_edge_lab2312_seed1.done.pt [best]  AbsRel 0.162  RMSE 0.557  d1 0.765  (aligned AbsRel 0.128)
+  gtmask_seeds/semi_edge_lab2312_seed1.done.pt [final]  AbsRel 0.162  RMSE 0.557  d1 0.765  (aligned AbsRel 0.128)
+  gtmask_seeds/semi_edge_lab2312_seed2.done.pt [best]  AbsRel 0.158  RMSE 0.551  d1 0.775  (aligned AbsRel 0.128)
+  gtmask_seeds/semi_edge_lab2312_seed2.done.pt [final]  AbsRel 0.158  RMSE 0.551  d1 0.775  (aligned AbsRel 0.128)
+  e1_25_seeds/gt_lab11562_seed1.done.pt [best]  AbsRel 0.154  RMSE 0.540  d1 0.779  (aligned AbsRel 0.128)
+  e1_25_seeds/gt_lab11562_seed1.done.pt [final]  AbsRel 0.157  RMSE 0.535  d1 0.780  (aligned AbsRel 0.127)
+  e1_25_seeds/gt_lab11562_seed2.done.pt [best]  AbsRel 0.154  RMSE 0.539  d1 0.784  (aligned AbsRel 0.129)
+  e1_25_seeds/gt_lab11562_seed2.done.pt [final]  AbsRel 0.154  RMSE 0.539  d1 0.784  (aligned AbsRel 0.129)
+
+------------------------------------------------------------------------------------------------------------------------
+TEST SET (654 images, Eigen crop, cap 10 m); mean ± std over seeds
+------------------------------------------------------------------------------------------------------------------------
+group           student   steps  labeled  recipe       model    n         AbsRel    RMSE     d1  aligned  far RMSE
+gtmask_seeds    small     24000     2312  E4 semi_edge best     2    0.160±0.002   0.554  0.770    0.128     2.131
+gtmask_seeds    small     24000     2312  E4 semi_edge final    2    0.160±0.002   0.554  0.770    0.128     2.131
+e1_25_seeds     small     24000    11562  E1 gt        best     2    0.154±0.000   0.539  0.781    0.128     1.871
+e1_25_seeds     small     24000    11562  E1 gt        final    2    0.155±0.001   0.537  0.782    0.128     1.822
+gtmask_seeds    small     24000    11562  E4 semi_edge best     2    0.150±0.001   0.544  0.780    0.124     2.042
+gtmask_seeds    small     24000    11562  E4 semi_edge final    2    0.150±0.001   0.544  0.780    0.124     2.042
+------------------------------------------------------------------------------------------------------------------------
+Saved: /content/drive/MyDrive/Colab Notebooks/kd_depth/results/test_seeds/report.json

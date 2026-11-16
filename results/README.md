@@ -7,15 +7,17 @@ Each folder has `report.json` (full config and metrics), `examples.png` and, for
 - **Students:** tiny (~1M), small (3.15M, the default) and base (~4M).
 - **Recipes:** E1 `gt` (labels only), E2 `gt_t` (+ teacher on labeled images), E3 `semi`
   (+ teacher on all images), E4 `semi_edge` (E3 + edge loss).
-- **Metrics:** validation only. The 654 test images have not been used yet.
-  "Best" is the checkpoint with the lowest validation AbsRel; "final" is the last step.
+- **Metrics:** validation for every run. The 654 test images were evaluated once, after the
+  training runs ended ([Test set](#test-set)). "Best" is the checkpoint with the lowest
+  validation AbsRel; "final" is the last step.
 
 Contents:
 
 1. [Official runs](#official-runs): 1,000 validation images, Colab L4
-2. [All official results](#all-official-results): every run with every metric
-3. [Pilot runs](#pilot-runs): 300 validation images (not comparable with the official runs)
-4. [Run history notes](#run-history-notes)
+2. [Test set](#test-set): the 654 NYU test images, evaluated once
+3. [All official results](#all-official-results): every run with every metric
+4. [Pilot runs](#pilot-runs): 300 validation images (not comparable with the official runs)
+5. [Run history notes](#run-history-notes)
 
 ---
 
@@ -173,6 +175,23 @@ batch (also those drawn from the pool), teacher and edge losses only on unlabele
   E1 with a different sampler. It gets 0.157 against 0.153 for E1: two runs of nearly the same
   setup differ by ~2.6%, a direct estimate of seed-to-seed noise.
 
+### `gtmask_seeds`, `e1_25_seeds`: three seeds at 5% and 25% (validation)
+
+Seeds 1 and 2 of `gtmask_decay` at 5% and 25%, and of E1 at 25%. The labeled images are the same
+as for seed 0; only the training order and initialization of the head change. Mean ± std over
+seeds 0, 1 and 2.
+
+| Labeled | E1 gt | E4 + decay + GT mask | vs E1 | Seeds (GT mask) |
+|---|---|---|---|---|
+| 5% | 0.166 ± 0.001 | **0.161 ± 0.003** | −3% | 0.159, 0.165, 0.160 |
+| 25% | 0.157 ± 0.000 | **0.155 ± 0.001** | −1% | 0.154, 0.155, 0.155 |
+
+- At 5% all three seeds are below E1, but seed 0 was the best of the three: the 3-seed gain is −3%,
+  not −4%. RMSE is slightly worse than E1 (0.649 against 0.635).
+- At 25% the seeds agree closely and the gain is small. E1 at 25% is 0.156, 0.157 and 0.157.
+- These runs were started after the test set had been evaluated once (`test_final`). Their settings
+  were fixed before that; they only add seeds.
+
 ### `budgets_25_100`: many labels (seed 0)
 
 | Labeled | Recipe | AbsRel ↓ | RMSE ↓ | δ<1.25 ↑ | Final AbsRel |
@@ -198,6 +217,74 @@ batch (also those drawn from the pool), teacher and edge losses only on unlabele
 - At 1% E4 reaches 0.180–0.184 on every seed, but degrades late on two seeds
   (final 0.191 / 0.212 / 0.185) while its predicted scale drifts.
 - With 24k steps (`fix_1_short`) E4 no longer degrades, so all later groups use 24k steps.
+
+---
+
+## Test set
+
+The 654 NYU Depth V2 test images (Eigen split, rooms not in the training pool). The student
+predicts at 256×192; the prediction is upsampled to 640×480 and scored inside the Eigen crop on
+pixels between 0.001 and 10 m. Metrics are computed per image and averaged. AbsRel below is the
+raw metric depth, with no per-image scaling. Every number is the best-on-validation checkpoint.
+
+- `test_final`: every training group, evaluated once after all training runs had ended.
+- `test_seeds`: `gtmask_seeds` and `e1_25_seeds`, run afterwards with settings fixed before the
+  test (see above), so the 5% and 25% rows have three seeds.
+
+### Effect of the teacher by label budget (test, small student, 24k steps)
+
+| Labeled | E1 gt | E4 semi_edge | E4 + decay | E4 + decay + GT mask | Best vs E1 |
+|---|---|---|---|---|---|
+| 1% (462) | 0.195 ± 0.001 (3) | **0.169 ± 0.003** (3) | 0.177 | 0.188 | **−13%** (E4) |
+| 5% (2,312) | 0.166 ± 0.001 (3) | 0.164 ± 0.001 (3) | 0.159 | **0.158 ± 0.003** (3) | **−5%** (GT mask) |
+| 25% (11,562) | 0.154 ± 0.000 (3) | 0.157 | 0.153 | **0.151 ± 0.001** (3) | −2% (GT mask) |
+| 100% (46,248) | **0.150** | 0.155 | 0.151 | 0.152 | – |
+
+The number of seeds is in brackets; the rest have one seed. RMSE and δ1 of the same models:
+
+| Labeled | E1 gt | E4 semi_edge | E4 + decay | E4 + decay + GT mask |
+|---|---|---|---|---|
+| 1% | 0.646 / 0.698 | **0.580 / 0.754** | 0.593 / 0.741 | 0.640 / 0.700 |
+| 5% | 0.568 / 0.762 | 0.554 / 0.770 | **0.542 / 0.778** | 0.554 / 0.773 |
+| 25% | 0.540 / 0.783 | **0.538** / 0.782 | 0.549 / 0.779 | 0.543 / **0.783** |
+| 100% | **0.526 / 0.794** | 0.543 / 0.782 | 0.536 / 0.788 | 0.538 / 0.786 |
+
+- The test set gives the same picture as validation. At 1% the teacher cuts AbsRel by 13%
+  (3 seeds each, the difference is ~9 times the larger std).
+- At 5% the teacher still helps once it is kept off the labeled images (−5%, all three seeds
+  below E1).
+- At 25% and 100% the best teacher settings are within 2% of labels only.
+
+### Other checks at 1% labels (test, E1 → E4, one seed unless noted)
+
+| Check | E1 gt | E4 semi_edge | Change |
+|---|---|---|---|
+| Labeled subset k=1 | 0.199 | 0.175 | −12% |
+| Labeled subset k=2 | 0.200 | 0.175 | −12% |
+| Student tiny (~1M) | 0.214 | 0.199 | −7% |
+| Student base (~4M) | 0.188 | 0.182 | −3% |
+| Augmentation (`--aug`) | 0.195 | 0.173 | −11% |
+| Weight decay 0.01 | 0.193 | 0.168 | −13% |
+| Dropout 0.2 | 0.198 | 0.185 | −7% |
+| 63k steps (3 seeds) | 0.197 | 0.180 | −9% |
+
+Ablation (seed 0): E2 `gt_t` 0.191 at 1% and 0.164 at 5%; E3 `semi` 0.167 at 1% and 0.157 at 5%.
+E3 (no edge loss) is as good as E4 or slightly better, as on validation.
+
+### Published results on the same test set (for reference)
+
+| Model | Labels | AbsRel ↓ | RMSE ↓ | δ1 ↑ |
+|---|---|---|---|---|
+| Eigen & Fergus (2015) | all | 0.158 | 0.641 | 0.769 |
+| FastDepth (Wofk et al., 2019), MobileNet | all | – | 0.604 | 0.771 |
+| **Ours, small student (3.15M), E1** | **100%** | **0.150** | **0.526** | **0.794** |
+| **Ours, small student, E4** | **1%** | **0.169** | **0.580** | **0.754** |
+| Laina et al. (2016), ResNet-50 | all | 0.127 | 0.573 | 0.811 |
+| DORN (Fu et al., 2018) | all | 0.115 | 0.509 | 0.828 |
+| BTS (Lee et al., 2019) | all | 0.110 | 0.392 | 0.885 |
+
+Not a strict comparison: resolution, training data and the RMSE average differ (ours is the mean
+of per-image RMSE, which is lower than one RMSE over all pixels).
 
 ---
 
@@ -248,6 +335,9 @@ its step for each seed); **final** = the last step. δ1–δ3: share of pixels w
 | `gtmask_decay` | 5% (2,312) | E4 semi_edge + decay + GT mask | small | 24k | 1 | 0.159 | 0.654 | 0.753 | 0.938 | 0.985 | 0.071 | 21k | 0.160 | 0.640 | 0.760 |
 | `gtmask_decay` | 25% (11,562) | E4 semi_edge + decay + GT mask | small | 24k | 1 | 0.154 | 0.625 | 0.766 | 0.948 | 0.988 | 0.068 | 21k | 0.154 | 0.626 | 0.764 |
 | `gtmask_decay` | 100% (46,248) | E4 semi_edge + decay + GT mask | small | 24k | 1 | 0.157 | 0.606 | 0.769 | 0.948 | 0.987 | 0.068 | 24k | 0.157 | 0.606 | 0.769 |
+| `gtmask_seeds` | 5% (2,312) | E4 semi_edge + decay + GT mask | small | 24k | 2 (seeds 1, 2) | 0.163 | 0.646 | 0.746 | 0.939 | 0.985 | 0.071 | 24k | 0.163 | 0.646 | 0.746 |
+| `gtmask_seeds` | 25% (11,562) | E4 semi_edge + decay + GT mask | small | 24k | 2 (seeds 1, 2) | 0.155 | 0.623 | 0.765 | 0.948 | 0.987 | 0.069 | 24k | 0.155 | 0.623 | 0.765 |
+| `e1_25_seeds` | 25% (11,562) | E1 gt | small | 24k | 2 (seeds 1, 2) | 0.157 | 0.612 | 0.769 | 0.947 | 0.987 | 0.068 | 21–24k | 0.157 | 0.606 | 0.773 |
 
 ---
 
