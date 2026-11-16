@@ -41,7 +41,10 @@ Training and the test set are done; the report is next. Validation AbsRel of the
 With all labels the small student reaches AbsRel 0.150, RMSE 0.526 and δ1 0.794, in the range of
 published full-size models from 2015–2016 (see the comparison in the results file).
 
-Details for every run are in [results/README.md](results/README.md).
+![Test AbsRel by label budget](figures/test_budget.png)
+
+Details for every run are in [results/README.md](results/README.md); all figures are in
+[figures/](figures/).
 
 ## Repository layout
 
@@ -51,10 +54,12 @@ scripts/             experiment entry points
   feasibility.py       full-label feasibility test (+ speed / FLOPs / compute estimates)
   fewlabel_v2.py       few-label experiments E1–E4 (current)
   evaluate_test.py     finished runs on the 654-image test set
+  make_figures.py      report figures from results/ (make figures)
   fewlabel_v1.py       first version, kept for reproducibility
 notebooks/           colab_run.ipynb: long runs on a Colab GPU, with checkpoints on Drive
 tests/               unit tests (resume, cache reuse, label budgets)
 results/             one folder per run: report.json, examples.png, run.log
+figures/             report figures (PNG + PDF), made from results/
 docs/proposal/       proposal (LaTeX + PDF)
 data/                NYU data (not in git)
 cache/               cached data + teacher outputs (not in git)
