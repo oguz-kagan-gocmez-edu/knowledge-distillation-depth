@@ -60,6 +60,29 @@ def load_test(path):
     return rgb, np.stack(depth)
 
 
+def teacher_preds(path, size, device, bs=8):
+    """Depth Anything V2 on the full-size test images, each aligned to its real depth.
+
+    The teacher predicts relative inverse depth. As for the validation reference, scale and shift
+    are fitted per image to the real depth inside the crop (least squares on inverse depth), so
+    this is an optimistic upper bound that no student can reach without the real depth.
+    Yields (aligned depth inside the crop, real depth inside the crop) per image.
+    """
+    rows, read, resolve = fl.open_densedepth(path, "nyu2_test.csv")
+    teacher = fz.DepthAnythingTeacher(size, device)
+    for i in range(0, len(rows), bs):
+        pils, gts = [], []
+        for rp, dp in rows[i:i + bs]:
+            pils.append(Image.open(io.BytesIO(read(resolve(rp)))).convert("RGB"))
+            gts.append(fz.to_meters(np.array(Image.open(io.BytesIO(read(resolve(dp))))))[CROP])
+        with torch.no_grad():
+            inputs = teacher.proc(images=pils, return_tensors="pt").to(device)
+            disp = teacher.model(**inputs).predicted_depth.float().unsqueeze(1)
+        disp = F.interpolate(disp, size=(480, 640), mode="bilinear", align_corners=False)
+        for d, g in zip(disp[:, 0, CROP[0], CROP[1]].cpu().numpy(), gts):
+            yield fz.align_teacher(d, g)[0], g.astype(np.float32)
+
+
 def image_metrics(p, g):
     """Metrics of one image; p and g are depth maps of the same size, already cropped."""
     v = (g > MIN_D) & (g < MAX_D)
@@ -140,6 +163,8 @@ def main():
     ap.add_argument("--which", default="best,final", help="best and/or final model of each run")
     ap.add_argument("--out", default="results/test")
     ap.add_argument("--device", default="auto")
+    ap.add_argument("--teacher", choices=["small", "base", "large"],
+                    help="evaluate this teacher instead (aligned per image to the real depth)")
     ap.add_argument("--resummarize", metavar="REPORT",
                     help="rebuild the summary of an existing report.json without evaluating again")
     args = ap.parse_args()
@@ -150,9 +175,29 @@ def main():
         path.write_text(json.dumps(report, indent=1))
         print(f"Saved: {path}")
         return
-    if not args.ckpt_dir:
-        ap.error("--ckpt-dir is required")
     device = fz.pick_device(args.device)
+    if args.teacher:
+        print(f"Device: {device}\nTeacher {args.teacher} on the test set from {args.data} ...")
+        acc = {}
+        for p, g in teacher_preds(args.data, args.teacher, device):
+            for view, ms in image_metrics(p, g).items():
+                for k, v in ms.items():
+                    acc.setdefault(view, {}).setdefault(k, []).append(float(v))
+        m = {view: {k: (float(np.sum(v)) if k == "pixels" else float(np.mean(v))) for k, v in ms.items()}
+             for view, ms in acc.items()}
+        raw = m["raw"]
+        print(f"  {len(acc['raw']['AbsRel'])} images  AbsRel {raw['AbsRel']:.3f}  RMSE {raw['RMSE']:.3f}  "
+              f"d1 {raw['delta1']:.3f}  (teacher aligned per image: optimistic upper bound)")
+        out = Path(args.out)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "report.json").write_text(json.dumps({
+            "run": run_info(), "config": vars(args), "teacher": fz.DepthAnythingTeacher.IDS[args.teacher],
+            "alignment": "scale and shift on inverse depth, fitted per image to the real depth in the crop",
+            "metrics": m}, indent=1))
+        print(f"Saved: {out / 'report.json'}")
+        return
+    if not args.ckpt_dir:
+        ap.error("--ckpt-dir or --teacher is required")
     which = [w.strip() for w in args.which.split(",")]
 
     print(f"Device: {device}\nLoading the test set from {args.data} ...")

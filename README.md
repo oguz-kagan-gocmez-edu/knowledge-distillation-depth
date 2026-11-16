@@ -39,7 +39,8 @@ Training and the test set are done; the report is next. Validation AbsRel of the
 | 100% (46,248) | **0.150** | 0.155 | 0.151 | 0.152 | – |
 
 With all labels the small student reaches AbsRel 0.150, RMSE 0.526 and δ1 0.794, in the range of
-published full-size models from 2015–2016 (see the comparison in the results file). It has 8×
+published full-size models from 2015–2016 (see the comparison in the results file; the teacher,
+aligned per image to the real depth, gets 0.062). It has 8×
 fewer parameters and 144× fewer FLOPs than the teacher and runs in 8.5 ms on an M4 Pro GPU
 (teacher: 45 ms). With 1% labels the teacher mostly improves the shape of the depth map: after
 per-image scaling the error falls by 19%, so the metric scale still has to come from the labels.

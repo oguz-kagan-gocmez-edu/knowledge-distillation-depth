@@ -1,0 +1,56 @@
+{
+ "run": {
+  "git_commit": "7bd33761f8ca01973455a82662f748d1bf82d2b3",
+  "git_branch": "feat/teacher-test-qualitative",
+  "git_dirty": true,
+  "command": "python3 scripts/evaluate_test.py --teacher small --out results/test_teacher",
+  "started_utc": "2026-11-16T15:10:51+00:00",
+  "python": "3.14.6",
+  "torch": "2.14.1",
+  "machine": "macOS-27.2.1-arm64-arm-64bit-Mach-O"
+ },
+ "config": {
+  "data": "data/nyu_data",
+  "ckpt_dir": null,
+  "which": "best,final",
+  "out": "results/test_teacher",
+  "device": "auto",
+  "teacher": "small",
+  "resummarize": null
+ },
+ "teacher": "depth-anything/Depth-Anything-V2-Small-hf",
+ "alignment": "scale and shift on inverse depth, fitted per image to the real depth in the crop",
+ "metrics": {
+  "raw": {
+   "AbsRel": 0.0617264844277811,
+   "RMSE": 0.29698326228192184,
+   "delta1": 0.9556764901334612,
+   "delta2": 0.9881787924283725,
+   "delta3": 0.9960589415699087,
+   "log10": 0.026944792741875445
+  },
+  "aligned": {
+   "AbsRel": 0.06780316151638689,
+   "RMSE": 0.31935096335873603,
+   "delta1": 0.9493720798286148,
+   "delta2": 0.9866365817227523,
+   "delta3": 0.9958722646787965,
+   "log10": 0.029073742651935974
+  },
+  "near": {
+   "AbsRel": 0.06022762898811415,
+   "RMSE": 0.1887863639838971,
+   "pixels": 104253093.0
+  },
+  "mid": {
+   "AbsRel": 0.08269751747952891,
+   "RMSE": 0.4236532067098505,
+   "pixels": 46964680.0
+  },
+  "far": {
+   "AbsRel": 0.16997955524870617,
+   "RMSE": 1.312041384625164,
+   "pixels": 4800467.0
+  }
+ }
+}
