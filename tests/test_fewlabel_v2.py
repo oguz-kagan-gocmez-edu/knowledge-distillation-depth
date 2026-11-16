@@ -216,6 +216,13 @@ def test_evaluate_test_set(tmp_path):
                     str(tmp_path / "t" / "report.json")], check=True, capture_output=True, text=True)
     again = json.loads((tmp_path / "t" / "report.json").read_text())
     assert len(again["summary"]) == 4 and {s["group"] for s in again["summary"]} == {"ck"}
+    # qualitative figure from the same checkpoints (no teacher: no download)
+    ck = sorted((tmp_path / "ck").glob("*.done.pt"))
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "qualitative.py"), "--data", str(tmp_path / "nyu"),
+                    "--ckpt", f"A={ck[0]}", f"B={ck[1]}", "--teacher", "none", "--rows", "1",
+                    "--device", "cpu",
+                    "--out", str(tmp_path / "fig")], check=True, capture_output=True, text=True)
+    assert (tmp_path / "fig" / "qualitative.png").exists()
 
 
 def test_make_figures(tmp_path):

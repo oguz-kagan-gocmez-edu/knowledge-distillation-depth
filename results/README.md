@@ -248,6 +248,7 @@ raw metric depth, with no per-image scaling. Every number is the best-on-validat
 - `test_final`: every training group, evaluated once after all training runs had ended.
 - `test_seeds`: `gtmask_seeds` and `e1_25_seeds`, run afterwards with settings fixed before the
   test (see above), so the 5% and 25% rows have three seeds.
+- `test_teacher`: the teacher, aligned per image (an upper bound; see the published results below).
 
 ### Effect of the teacher by label budget (test, small student, 24k steps)
 
@@ -322,6 +323,7 @@ the depth map without its overall scale. Same models as the main test table.
 
 | Model | Labels | AbsRel ↓ | RMSE ↓ | δ1 ↑ |
 |---|---|---|---|---|
+| Our teacher, Depth Anything V2 Small, aligned per image (`test_teacher`) | – | 0.062 | 0.297 | 0.956 |
 | Eigen & Fergus (2015) | all | 0.158 | 0.641 | 0.769 |
 | FastDepth (Wofk et al., 2019), MobileNet | all | – | 0.604 | 0.771 |
 | **Ours, small student (3.15M), E1** | **100%** | **0.150** | **0.526** | **0.794** |
@@ -332,6 +334,14 @@ the depth map without its overall scale. Same models as the main test table.
 
 Not a strict comparison: resolution, training data and the RMSE average differ (ours is the mean
 of per-image RMSE, which is lower than one RMSE over all pixels).
+
+The teacher row is an upper bound, not a usable model: its relative output is scaled and shifted
+per image to fit the real depth, which a student never sees (`scripts/evaluate_test.py --teacher
+small`, full-size input, same crop). On the test set it gets 0.062, close to the 0.053 that the
+Depth Anything V2 paper reports for the Small model on NYU with the same kind of per-image
+alignment. The 0.110 of the validation reference comes from a harder protocol: the teacher output
+stored at 256×192, no Eigen crop and 25 held-out rooms (the students too are 0–0.005 worse on
+validation than on test).
 
 ---
 
