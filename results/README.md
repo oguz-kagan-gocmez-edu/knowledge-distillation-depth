@@ -319,6 +319,19 @@ the depth map without its overall scale. Same models as the main test table.
   smallest beyond 6 m (0.294 → 0.280). At 5% and above E4 is worse than E1 beyond 6 m (0.289
   against 0.267): the teacher loss is computed on inverse depth, where far depths are compressed.
 
+### Examples (test)
+
+Four test images evenly spaced over the set, not picked by result (`scripts/qualitative.py`, best
+checkpoints of seed 0). The teacher is aligned per image to the real depth; the students are not.
+
+![Test examples](../figures/qualitative.png)
+
+- At 1% the teacher mostly fixes the layout: in #131 E1 gets the wall and shelves wrong
+  (AbsRel 0.235), E4 follows the room's shape (0.140), close to E1 with all labels (0.124).
+- Object outlines (the chair in #261 and #392) are much sharper with the teacher.
+- Both 1% students get the overall scale of #392 wrong (the back wall is placed too far), and E4
+  more so (0.468 against 0.426): the scale comes from the labels, and the teacher cannot fix it.
+
 ### Published results on the same test set (for reference)
 
 | Model | Labels | AbsRel ↓ | RMSE ↓ | δ1 ↑ |
