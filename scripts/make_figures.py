@@ -6,6 +6,7 @@ Figures for the report, built only from the report.json files in results/ (no tr
   epochs          validation AbsRel against passes over the labeled images (63k-step runs)
   test_budget     test AbsRel against the label budget
   test_checks_1   test AbsRel at 1% labels, E1 and E4 under each check
+  test_errors     where the teacher helps: scale-aligned AbsRel by budget, AbsRel by distance at 1%
 
 Run from the repository root:
   python scripts/make_figures.py --out figures
@@ -95,7 +96,8 @@ def seed_curves(parts):
 
 def save(fig, out, name):
     for ext in ("png", "pdf"):
-        fig.savefig(out / f"{name}.{ext}", dpi=200)
+        meta = {"CreationDate": None} if ext == "pdf" else {}   # same file on every run
+        fig.savefig(out / f"{name}.{ext}", dpi=200, metadata=meta)
     plt.close(fig)
     print(f"  {out / name}.png/.pdf")
 
@@ -150,8 +152,8 @@ def test_runs():
     return runs
 
 
-def test_values(runs, groups, n, recipe, student="small"):
-    v = [r["metrics"]["raw"]["AbsRel"] for r in runs if r["group"] in groups and r["n_lab"] == n
+def test_values(runs, groups, n, recipe, student="small", view="raw"):
+    v = [r["metrics"][view]["AbsRel"] for r in runs if r["group"] in groups and r["n_lab"] == n
          and r["recipe"] == recipe and r["model"] == "best" and r["student"] == student]
     if not v:
         raise SystemExit(f"no test result for {groups} {n} {recipe}")
@@ -208,6 +210,48 @@ def test_checks_1(out, runs):
     save(fig, out, "test_checks_1")
 
 
+def test_errors(out, runs):
+    fig, (a, b) = plt.subplots(1, 2, figsize=(9, 3.2), gridspec_kw={"width_ratios": [1.2, 1]})
+    xs = np.array(list(BUDGETS)) / 46248 * 100
+    for s, ls in (("E1", "-"), ("E4", "-"), ("gtmask", "-")):
+        spec = SERIES[s]
+        recipe = "gt" if s == "E1" else "semi_edge"
+        for view, style_, lab in (("raw", ":", None), ("aligned", ls, spec["label"])):
+            m = [test_values(runs, TEST_RUNS[s][n], n, recipe, view=view).mean() for n in BUDGETS]
+            a.plot(xs, m, color=spec["color"], marker=spec["marker"], ls=style_, label=lab,
+                   alpha=1 if view == "aligned" else 0.45)
+    a.set_xscale("log")
+    a.set_xticks(xs, list(BUDGETS.values()))
+    a.minorticks_off()
+    a.set_xlabel("labeled images")
+    a.set_ylabel("test AbsRel ↓")
+    a.set_title("Scale-aligned (solid) and raw (dotted) AbsRel", fontsize=9)
+    a.legend(frameon=False, fontsize=7.5)
+
+    bins = [("near", "< 3 m"), ("mid", "3–6 m"), ("far", "> 6 m")]
+    x = np.arange(len(bins))
+    for i, (s, groups) in enumerate((("E1", ["fix_1_short"]), ("E4", ["fix_1_short"]))):
+        spec = SERIES[s]
+        recipe = "gt" if s == "E1" else "semi_edge"
+        rs = [r for r in runs if r["group"] in groups and r["n_lab"] == 462 and r["recipe"] == recipe
+              and r["model"] == "best"]
+        v = [np.mean([r["metrics"][k]["AbsRel"] for r in rs]) for k, _ in bins]
+        bars = b.bar(x + (i - 0.5) * 0.38, v, width=0.36, color=spec["color"], label=spec["label"],
+                     edgecolor="white", linewidth=1)
+        for bar, val in zip(bars, v):
+            b.text(bar.get_x() + bar.get_width() / 2, val + 0.004, f"{val:.3f}", ha="center", fontsize=7,
+                   color=INK2)
+    share = [r for r in runs if r["group"] == "fix_1_short"][0]["metrics"]
+    total = sum(share[k]["pixels"] for k, _ in bins)
+    b.set_xticks(x, [f"{lab}\n{share[k]['pixels'] / total:.0%} of pixels" for k, lab in bins])
+    b.grid(axis="x", visible=False)
+    b.set_ylabel("test AbsRel ↓")
+    b.set_title("1% labels: AbsRel by true depth (3 seeds)", fontsize=9)
+    b.legend(frameon=False, fontsize=7.5, loc="upper left")
+    fig.tight_layout()
+    save(fig, out, "test_errors")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default="figures")
@@ -221,6 +265,7 @@ def main():
     epochs(out)
     test_budget(out, runs)
     test_checks_1(out, runs)
+    test_errors(out, runs)
 
 
 if __name__ == "__main__":

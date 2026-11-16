@@ -1,0 +1,77 @@
+{
+ "run": {
+  "git_commit": "e8ca04b11d9734bcbc01c0ac717d2544bf0e7afc",
+  "git_branch": "results/speed-analysis",
+  "git_dirty": false,
+  "command": "python3 scripts/measure_speed.py --out results/speed",
+  "started_utc": "2026-11-16T15:01:03+00:00",
+  "python": "3.14.6",
+  "torch": "2.14.1",
+  "machine": "macOS-27.2.1-arm64-arm-64bit-Mach-O"
+ },
+ "config": {
+  "out": "results/speed",
+  "device": "auto",
+  "runs": 50,
+  "no_teacher": false
+ },
+ "device": "mps",
+ "cpu_threads": 10,
+ "rows": [
+  {
+   "model": "Student tiny",
+   "input_hw": [
+    192,
+    256
+   ],
+   "params_M": 0.980441,
+   "GFLOPs": 0.214851584,
+   "latency_ms_device": 6.977771000492794,
+   "latency_ms_cpu": 87.25360399876081
+  },
+  {
+   "model": "Student small",
+   "input_hw": [
+    192,
+    256
+   ],
+   "params_M": 3.153393,
+   "GFLOPs": 0.74011008,
+   "latency_ms_device": 8.481083500555542,
+   "latency_ms_cpu": 118.1918960000985
+  },
+  {
+   "model": "Student base",
+   "input_hw": [
+    192,
+    256
+   ],
+   "params_M": 4.229949,
+   "GFLOPs": 1.077956608,
+   "latency_ms_device": 10.345625500121969,
+   "latency_ms_cpu": 239.23752049995528
+  },
+  {
+   "model": "Teacher (Depth Anything V2 Small)",
+   "input_hw": [
+    518,
+    686
+   ],
+   "params_M": 24.785089,
+   "GFLOPs": 106.812803328,
+   "latency_ms_device": 45.14991700034443,
+   "latency_ms_cpu": 118.53839550076373
+  },
+  {
+   "model": "Teacher at the students' size",
+   "input_hw": [
+    196,
+    252
+   ],
+   "params_M": 24.785089,
+   "GFLOPs": 14.873324544,
+   "latency_ms_device": 10.000458000831713,
+   "latency_ms_cpu": 28.232833000402024
+  }
+ ]
+}

@@ -38,16 +38,21 @@ with the labeled set (0.406 in `budgets_25_100`). The teacher reference scales a
 teacher prediction to the real depth of that image, which a student never sees, so it is an
 optimistic upper bound.
 
-**Model size and speed** (measured in `feasibility`, input 256×192)
+**Model size and speed** (`speed`, Apple M4 Pro)
 
-| Model | Parameters | Times smaller than the teacher | GFLOPs | Latency |
-|---|---|---|---|---|
-| Teacher: Depth Anything V2 Small | 24.8M | 1× | – | – |
-| Student tiny (MobileNetV3-Small) | ~1M | ~25× | – | – |
-| **Student small (MobileNetV3-Large)** | **3.15M** | **~8×** | **0.74** | **8.6 ms (M4 Pro GPU), 123 ms (CPU)** |
-| Student base (EfficientNet-B0) | ~4M | ~6× | – | – |
+| Model | Input | Parameters | Times smaller | GFLOPs | Latency, M4 Pro GPU |
+|---|---|---|---|---|---|
+| Teacher: Depth Anything V2 Small | 686×518 | 24.8M | 1× | 106.8 | 45.1 ms |
+| Teacher at the students' input size | 252×196 | 24.8M | 1× | 14.9 | 10.0 ms |
+| Student tiny (MobileNetV3-Small) | 256×192 | 0.98M | 25× | 0.21 | 7.0 ms |
+| **Student small (MobileNetV3-Large)** | **256×192** | **3.15M** | **8×** | **0.74** | **8.5 ms** |
+| Student base (EfficientNet-B0) | 256×192 | 4.23M | 6× | 1.08 | 10.3 ms |
 
-The tiny and base sizes are design targets; they are measured with the test set.
+Batch 1, model only, median of 50 passes (`scripts/measure_speed.py`, `results/speed`). The teacher
+gets 686×518 for a 640×480 NYU image; the small student needs 144× fewer FLOPs and is 5× faster.
+At batch 1 the GPU time of the students is mostly launch overhead, so it shrinks less than the
+FLOPs. CPU numbers are in `results/speed`: PyTorch on macOS has no fast depthwise convolution, so
+there the students are not faster than the teacher at the same input size.
 
 ### Summary: effect of the teacher by label budget
 
@@ -287,6 +292,31 @@ The number of seeds is in brackets; the rest have one seed. RMSE and δ1 of the 
 
 Ablation (seed 0): E2 `gt_t` 0.191 at 1% and 0.164 at 5%; E3 `semi` 0.167 at 1% and 0.157 at 5%.
 E3 (no edge loss) is as good as E4 or slightly better, as on validation.
+
+### Where the teacher helps (test)
+
+![Scale-aligned AbsRel and AbsRel by distance](../figures/test_errors.png)
+
+"Aligned" scales each prediction by median(real) / median(predicted), so it measures the shape of
+the depth map without its overall scale. Same models as the main test table.
+
+| Labeled | E1 raw | E1 aligned | E4 raw | E4 aligned | Aligned E4 vs E1 |
+|---|---|---|---|---|---|
+| 1% | 0.195 | 0.162 | **0.169** | **0.132** | −19% |
+| 5% | 0.166 | 0.137 | 0.164 | 0.128 | −7% |
+| 25% | 0.154 | 0.128 | 0.157 | 0.124 | −3% |
+| 100% | 0.150 | 0.125 | 0.155 | 0.125 | 0% |
+
+- The teacher improves the shape of the depth map more than its scale. At 1% the aligned error
+  falls by 19% and the raw error by 13%; the part due to scale (raw − aligned, ~0.03–0.04) is about
+  the same for E1 and E4. The scale has to come from the labels.
+- In shape, 1% labels with the teacher (0.132) are close to 25% labels without it (0.128); in raw
+  AbsRel 1% with the teacher (0.169) is close to 5% without it (0.166).
+- Even at 25% the teacher still gives a better shape (0.124 against 0.128), but the raw error is
+  worse: what E4 loses with many labels is the scale.
+- By distance at 1% the gain is largest for near pixels (< 3 m, 67% of pixels: 0.205 → 0.176) and
+  smallest beyond 6 m (0.294 → 0.280). At 5% and above E4 is worse than E1 beyond 6 m (0.289
+  against 0.267): the teacher loss is computed on inverse depth, where far depths are compressed.
 
 ### Published results on the same test set (for reference)
 
