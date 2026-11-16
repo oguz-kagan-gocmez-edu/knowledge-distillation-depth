@@ -221,5 +221,14 @@ def test_evaluate_test_set(tmp_path):
 def test_make_figures(tmp_path):
     subprocess.run([sys.executable, str(ROOT / "scripts" / "make_figures.py"), "--out", str(tmp_path)],
                    check=True, capture_output=True, text=True)
-    for name in ("val_curves", "epochs", "test_budget", "test_checks_1"):
+    for name in ("val_curves", "epochs", "test_budget", "test_checks_1", "test_errors"):
         assert (tmp_path / f"{name}.png").stat().st_size > 0 and (tmp_path / f"{name}.pdf").exists()
+
+
+def test_measure_speed(tmp_path):
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "measure_speed.py"), "--no-teacher",
+                    "--device", "cpu",
+                    "--runs", "5", "--out", str(tmp_path)], check=True, capture_output=True, text=True)
+    rows = json.loads((tmp_path / "report.json").read_text())["rows"]
+    assert [r["model"] for r in rows] == ["Student tiny", "Student small", "Student base"]
+    assert abs(rows[1]["params_M"] - 3.15) < 0.01
