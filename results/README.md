@@ -136,6 +136,19 @@ step (lower = the labels are fit more closely).
 - The teacher's gain (−11 to −13%) stays the same with augmentation or weight decay, so it adds
   to them. Augmentation with the teacher gives the lowest 1% result so far (0.173).
 
+### Validation curves
+
+Mean over seeds where there are several (band: min to max). The dotted line marks where the
+teacher decay starts.
+
+![Validation AbsRel during training](../figures/val_curves.png)
+
+Against passes over the labeled images (63k-step runs of `main_1_5`, 3 seeds): E1 sees 8 labeled
+images per step and E4 4, so at 1% E1 goes through its 462 images ~1,100 times. Its validation
+error stops improving after ~100 passes while the teacher keeps E4 lower throughout.
+
+![Validation AbsRel against epochs](../figures/epochs.png)
+
 ### `decay_1_5_25`, `decay_100`: teacher weight falls to 0 over the second half (E4, seed 0)
 
 `--teacher-decay 0.5`: after the usual ramp the teacher weight stays at 1 until 12k steps, then
@@ -233,6 +246,8 @@ raw metric depth, with no per-image scaling. Every number is the best-on-validat
 
 ### Effect of the teacher by label budget (test, small student, 24k steps)
 
+![Test AbsRel by label budget](../figures/test_budget.png)
+
 | Labeled | E1 gt | E4 semi_edge | E4 + decay | E4 + decay + GT mask | Best vs E1 |
 |---|---|---|---|---|---|
 | 1% (462) | 0.195 ± 0.001 (3) | **0.169 ± 0.003** (3) | 0.177 | 0.188 | **−13%** (E4) |
@@ -257,15 +272,17 @@ The number of seeds is in brackets; the rest have one seed. RMSE and δ1 of the 
 
 ### Other checks at 1% labels (test, E1 → E4, one seed unless noted)
 
+![Teacher gain under each check at 1%](../figures/test_checks_1.png)
+
 | Check | E1 gt | E4 semi_edge | Change |
 |---|---|---|---|
 | Labeled subset k=1 | 0.199 | 0.175 | −12% |
-| Labeled subset k=2 | 0.200 | 0.175 | −12% |
+| Labeled subset k=2 | 0.200 | 0.175 | −13% |
 | Student tiny (~1M) | 0.214 | 0.199 | −7% |
-| Student base (~4M) | 0.188 | 0.182 | −3% |
+| Student base (~4M) | 0.188 | 0.182 | −4% |
 | Augmentation (`--aug`) | 0.195 | 0.173 | −11% |
 | Weight decay 0.01 | 0.193 | 0.168 | −13% |
-| Dropout 0.2 | 0.198 | 0.185 | −7% |
+| Dropout 0.2 | 0.198 | 0.185 | −6% |
 | 63k steps (3 seeds) | 0.197 | 0.180 | −9% |
 
 Ablation (seed 0): E2 `gt_t` 0.191 at 1% and 0.164 at 5%; E3 `semi` 0.167 at 1% and 0.157 at 5%.

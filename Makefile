@@ -1,7 +1,7 @@
 PY ?= python3
 SMOKE ?= /tmp/kd_smoke
 
-.PHONY: help install lint format test smoke
+.PHONY: help install lint format test smoke figures
 
 help:
 	@echo "make install  - install the package and dev tools (editable)"
@@ -9,6 +9,7 @@ help:
 	@echo "make format   - auto-fix style with ruff"
 	@echo "make test     - unit tests (resume, cache reuse, label budgets), ~2 min"
 	@echo "make smoke    - run every script on tiny synthetic data (no downloads, CPU, ~2 min)"
+	@echo "make figures  - report figures from results/*/report.json into figures/"
 
 install:
 	$(PY) -m pip install -e ".[dev]"
@@ -18,6 +19,9 @@ lint:
 
 test:
 	$(PY) -m pytest -q tests
+
+figures:
+	$(PY) scripts/make_figures.py --out figures
 
 format:
 	$(PY) -m ruff check --fix .

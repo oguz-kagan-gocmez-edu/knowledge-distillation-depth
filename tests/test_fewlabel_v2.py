@@ -216,3 +216,10 @@ def test_evaluate_test_set(tmp_path):
                     str(tmp_path / "t" / "report.json")], check=True, capture_output=True, text=True)
     again = json.loads((tmp_path / "t" / "report.json").read_text())
     assert len(again["summary"]) == 4 and {s["group"] for s in again["summary"]} == {"ck"}
+
+
+def test_make_figures(tmp_path):
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "make_figures.py"), "--out", str(tmp_path)],
+                   check=True, capture_output=True, text=True)
+    for name in ("val_curves", "epochs", "test_budget", "test_checks_1"):
+        assert (tmp_path / f"{name}.png").stat().st_size > 0 and (tmp_path / f"{name}.pdf").exists()
