@@ -60,9 +60,11 @@ scripts/             experiment entry points
   evaluate_test.py     finished runs on the 654-image test set
   make_figures.py      report figures from results/ (make figures)
   measure_speed.py     parameters, FLOPs and latency of the teacher and the students
+  export_hf.py         trained students -> .safetensors + model card for Hugging Face
   fewlabel_v1.py       first version, kept for reproducibility
 notebooks/           colab_run.ipynb: long runs on a Colab GPU, with checkpoints on Drive
-tests/               unit tests (resume, cache reuse, label budgets)
+hf/                  model card and standalone loader (modeling.py) for the exported students
+tests/               unit tests (resume, cache reuse, label budgets, export)
 results/             one folder per run: report.json, examples.png, run.log
 figures/             report figures (PNG + PDF), made from results/
 docs/proposal/       proposal (LaTeX + PDF)
@@ -117,6 +119,24 @@ Run all simply continues.
 | `gt_t` | E2 | real depth + teacher, labeled images only |
 | `semi` | E3 | real depth on labeled images + teacher on all images |
 | `semi_edge` | E4 | E3 + edge (gradient-matching) loss |
+
+## Sharing the models
+
+`scripts/export_hf.py` takes the best-on-validation weights from `.done.pt` checkpoints and writes a
+folder for Hugging Face. The folder holds one `.safetensors` file per model, `config.json`, the
+model card [`hf/README.md`](hf/README.md) and [`hf/modeling.py`](hf/modeling.py), a loader that
+needs only torch and torchvision. The three shared models are the small student at 1%, 5% and 25%
+labels, all trained with the Apache-2.0 Small teacher:
+
+```bash
+python scripts/export_hf.py --out hf_export \
+  --model small-1pct=checkpoints/fix_1_short/semi_edge_lab462_seed0.done.pt \
+  --model small-5pct=checkpoints/gtmask_decay/semi_edge_lab2312_seed0.done.pt \
+  --model small-25pct=checkpoints/gtmask_decay/semi_edge_lab11562_seed0.done.pt
+huggingface-cli upload <user>/<repo> hf_export .
+```
+
+Replace `<user>/<repo>` in the model card's code example before uploading.
 
 ## Evaluation protocol
 
