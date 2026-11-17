@@ -41,10 +41,10 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `gtmask_seeds` | `gtmask_decay` at 5% and 25% with seeds 1 and 2 | 24k | 4 | 1.5 | done |
 | `e1_25_seeds` | E1 at 25% with seeds 1 and 2, the baseline for `gtmask_seeds` at 25% | 24k | 2 | 0.7 | done |
 | `floor_1_5` | E4 + decay at 1% and 5%, teacher weight falls to 0.25 instead of 0 (`--teacher-floor 0.25`); validation only | 24k | 2 | 1 | done (not on the test set) |
-| `student_base_100` | E1 at 100% with the base student (EfficientNet-B0, 4.23M); validation only | 24k | 1 | 0.5 | to run |
-| `student_base_25` | E4 + decay + GT mask at 25% with the base student; validation only | 24k | 1 | 0.5 | to run |
-| `teacher_base_1_5` | E4 at 1% and 5% with Depth Anything V2 Base (97.5M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | to run |
-| `teacher_large_1_5` | E4 at 1% and 5% with Depth Anything V2 Large (335M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | to run |
+| `student_base_100` | E1 at 100% with the base student (EfficientNet-B0, 4.23M); validation only | 24k | 1 | 0.5 | done (not on the test set) |
+| `student_base_25` | E4 + decay + GT mask at 25% with the base student; validation only | 24k | 1 | 0.5 | done (not on the test set) |
+| `teacher_base_1_5` | E4 at 1% and 5% with Depth Anything V2 Base (97.5M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | done (not on the test set) |
+| `teacher_large_1_5` | E4 at 1% and 5% with Depth Anything V2 Large (335M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | done (not on the test set) |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -141,3 +141,7 @@ non-commercial use only.
 These four presets run after the test set and are decided on validation. If a model from them is
 shared or reported with test numbers, say that it was evaluated after the main test, with settings
 fixed before.
+
+**Outcome:** neither change moves the student beyond seed noise. Small, Base and Large teachers give
+0.176/0.176/0.178 at 1% and 0.170/0.169/0.166 at 5%; the base student gives 0.152 at 25% (small:
+0.155) and 0.153 at 100% (small: 0.153). Details in `results/README.md`.

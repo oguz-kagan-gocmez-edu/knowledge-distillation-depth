@@ -1,0 +1,221 @@
+{
+  "run": {
+    "git_commit": "862bf22b1544a486006267576cd3ea4128ab7174",
+    "git_branch": "main",
+    "git_dirty": false,
+    "command": "python3 scripts/fewlabel_v2.py --pool -1 --n-val 1000 --eval-every 3000 --steps 24000 --labeled 25% --recipes semi_edge --student base --teacher-decay 0.5 --pool-gt --lambda-t-lab 0 --data /content/nyu_data.zip --cache-dir /content/cache --ckpt-dir /content/drive/MyDrive/Colab Notebooks/kd_depth/checkpoints/student_base_25 --ckpt-every 1000 --out /content/drive/MyDrive/Colab Notebooks/kd_depth/results/student_base_25",
+    "started_utc": "2026-11-17T18:42:02+00:00",
+    "python": "3.13.16",
+    "torch": "2.14.1+cu130",
+    "machine": "Linux-6.6.159+-x86_64-with-glibc2.39"
+  },
+  "config": {
+    "data": "/content/nyu_data.zip",
+    "pool": -1,
+    "labeled": "25%",
+    "n_val": 1000,
+    "val_scene_frac": 0.1,
+    "recipes": "semi_edge",
+    "seeds": "0",
+    "teacher": "small",
+    "teacher_batch": 8,
+    "student": "base",
+    "steps": 24000,
+    "eval_every": 3000,
+    "batch_size": 8,
+    "lr": 0.0005,
+    "lambda_t": 1.0,
+    "lambda_e": 0.5,
+    "ramp": 0.3,
+    "clip": 1.0,
+    "teacher_decay": 0.5,
+    "teacher_floor": 0.0,
+    "label_subset": 0,
+    "aug": false,
+    "aug_scale": 1.25,
+    "weight_decay": 0.0001,
+    "dropout": 0.0,
+    "pool_gt": true,
+    "lambda_t_lab": 0.0,
+    "device": "cuda",
+    "out": "/content/drive/MyDrive/Colab Notebooks/kd_depth/results/student_base_25",
+    "cache_dir": "/content/cache",
+    "ckpt_dir": "/content/drive/MyDrive/Colab Notebooks/kd_depth/checkpoints/student_base_25",
+    "ckpt_every": 1000,
+    "stop_after": 0,
+    "prepare_only": false,
+    "no_pretrained": false,
+    "no_cache": false,
+    "quick": false,
+    "seed": 0
+  },
+  "data": {
+    "rooms": 249,
+    "val_rooms": 25,
+    "pool": 46248,
+    "val": 1000
+  },
+  "reference": {
+    "teacher_aligned_optimistic": {
+      "AbsRel": 0.1103685274720192,
+      "RMSE": 0.5193847417831421,
+      "delta1": 0.8812449951171875,
+      "delta2": 0.9661920166015625,
+      "delta3": 0.9854695434570313,
+      "log10": 0.049365200102329254
+    },
+    "constant_depth": {
+      "AbsRel": 0.4062504172325134,
+      "RMSE": 1.3377697467803955,
+      "delta1": 0.35010308837890625,
+      "delta2": 0.6368956095377605,
+      "delta3": 0.8119043375651042,
+      "log10": 0.1692270189523697
+    }
+  },
+  "results": {
+    "11562/semi_edge": {
+      "labeled": 11562,
+      "recipe": "semi_edge",
+      "mean": {
+        "AbsRel": 0.1518019586801529,
+        "RMSE": 0.6001046299934387,
+        "delta1": 0.7835690511067709,
+        "delta2": 0.9513440958658854,
+        "delta3": 0.9892959391276043,
+        "log10": 0.06582614034414291
+      },
+      "std": {
+        "AbsRel": 0.0,
+        "RMSE": 0.0,
+        "delta1": 0.0,
+        "delta2": 0.0,
+        "delta3": 0.0,
+        "log10": 0.0
+      },
+      "mean_last": {
+        "AbsRel": 0.1543676257133484,
+        "RMSE": 0.6192876100540161,
+        "delta1": 0.7680559285481771,
+        "delta2": 0.9473029378255208,
+        "delta3": 0.9897434895833334,
+        "log10": 0.067998968064785
+      },
+      "std_last": {
+        "AbsRel": 0.0,
+        "RMSE": 0.0,
+        "delta1": 0.0,
+        "delta2": 0.0,
+        "delta3": 0.0,
+        "log10": 0.0
+      },
+      "runs": [
+        {
+          "best": {
+            "AbsRel": 0.1518019586801529,
+            "RMSE": 0.6001046299934387,
+            "delta1": 0.7835690511067709,
+            "delta2": 0.9513440958658854,
+            "delta3": 0.9892959391276043,
+            "log10": 0.06582614034414291,
+            "scale": 0.969123363494873,
+            "silog": 0.1660241037607193,
+            "step": 21000
+          },
+          "history": [
+            {
+              "AbsRel": 0.18887846171855927,
+              "RMSE": 0.6774787306785583,
+              "delta1": 0.706239237467448,
+              "delta2": 0.9302754923502605,
+              "delta3": 0.9820231730143228,
+              "log10": 0.07837121933698654,
+              "scale": 1.0045275688171387,
+              "silog": 0.19693523645401,
+              "step": 3000
+            },
+            {
+              "AbsRel": 0.17479532957077026,
+              "RMSE": 0.672962486743927,
+              "delta1": 0.7216351114908853,
+              "delta2": 0.929607401529948,
+              "delta3": 0.9824060465494792,
+              "log10": 0.07598615437746048,
+              "scale": 0.9919216632843018,
+              "silog": 0.19411425292491913,
+              "step": 6000
+            },
+            {
+              "AbsRel": 0.1701742708683014,
+              "RMSE": 0.6763465404510498,
+              "delta1": 0.7219867757161458,
+              "delta2": 0.9347898559570312,
+              "delta3": 0.9847608846028646,
+              "log10": 0.07564763724803925,
+              "scale": 0.954624593257904,
+              "silog": 0.18900127708911896,
+              "step": 9000
+            },
+            {
+              "AbsRel": 0.16925418376922607,
+              "RMSE": 0.6403469443321228,
+              "delta1": 0.7490016276041667,
+              "delta2": 0.9400499267578125,
+              "delta3": 0.9850960693359375,
+              "log10": 0.07135406136512756,
+              "scale": 0.9900672435760498,
+              "silog": 0.18683016300201416,
+              "step": 12000
+            },
+            {
+              "AbsRel": 0.15888120234012604,
+              "RMSE": 0.6198574304580688,
+              "delta1": 0.7639061279296875,
+              "delta2": 0.9442266438802083,
+              "delta3": 0.9877912190755208,
+              "log10": 0.06865760684013367,
+              "scale": 0.9787495732307434,
+              "silog": 0.17620249092578888,
+              "step": 15000
+            },
+            {
+              "AbsRel": 0.16033588349819183,
+              "RMSE": 0.6096619963645935,
+              "delta1": 0.7720781860351562,
+              "delta2": 0.9491079508463541,
+              "delta3": 0.9883160400390625,
+              "log10": 0.06711693108081818,
+              "scale": 0.9982274770736694,
+              "silog": 0.17081284523010254,
+              "step": 18000
+            },
+            {
+              "AbsRel": 0.1518019586801529,
+              "RMSE": 0.6001046299934387,
+              "delta1": 0.7835690511067709,
+              "delta2": 0.9513440958658854,
+              "delta3": 0.9892959391276043,
+              "log10": 0.06582614034414291,
+              "scale": 0.969123363494873,
+              "silog": 0.1660241037607193,
+              "step": 21000
+            },
+            {
+              "AbsRel": 0.1543676257133484,
+              "RMSE": 0.6192876100540161,
+              "delta1": 0.7680559285481771,
+              "delta2": 0.9473029378255208,
+              "delta3": 0.9897434895833334,
+              "log10": 0.067998968064785,
+              "scale": 0.9459277391433716,
+              "silog": 0.16707870364189148,
+              "step": 24000
+            }
+          ],
+          "minutes": 26.31747303568333
+        }
+      ]
+    }
+  },
+  "verdicts": {}
+}
