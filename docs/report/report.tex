@@ -406,6 +406,12 @@ this removed most of the harm at 25\% and 100\% (E4 0.168 $\to$ 0.159, 0.164 $\t
 the best 5\% result so far (0.163), but at 1\% the student started to memorize again once the
 teacher was gone (training SILog 0.162 $\to$ 0.098, validation 0.175 $\to$ 0.183 at the last step).
 On the test set the decay reaches the level of E1 at 25\% and 100\% (Table~\ref{tab:test}).
+After the test evaluation I also checked, on validation only, whether the late overfitting at 1\%
+comes from removing the teacher completely or only from lowering its weight: with the weight
+falling to 0.25 instead of 0, training SILog ends at 0.111 and validation stays flat to the last
+step (0.177), but the best checkpoint is unchanged (0.176). At 5\% this lands between a constant
+teacher and the full decay (0.167 vs.\ 0.170 and 0.163). All three differences are within the noise
+of one seed, so I kept the full decay.
 
 \subsection{Keeping the teacher off the labeled images}
 \label{sec:gtmask}
