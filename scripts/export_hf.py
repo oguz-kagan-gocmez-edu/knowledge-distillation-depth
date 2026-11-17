@@ -15,7 +15,7 @@ the same output as the project's own Student.
         --model small-5pct=checkpoints/gtmask_decay/semi_edge_lab2312_seed0.done.pt \\
         --model small-25pct=checkpoints/gtmask_decay/semi_edge_lab11562_seed0.done.pt
 
-Upload (from your own account):  huggingface-cli upload <user>/<repo> hf_export .
+Upload (from your own account):  hf upload <user>/<repo> hf_export .
 """
 import argparse
 import importlib.util

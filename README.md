@@ -122,6 +122,8 @@ Run all simply continues.
 
 ## Sharing the models
 
+The three models are on Hugging Face: [oguzkagangocmez/kd-depth-students](https://huggingface.co/oguzkagangocmez/kd-depth-students).
+
 `scripts/export_hf.py` takes the best-on-validation weights from `.done.pt` checkpoints and writes a
 folder for Hugging Face. The folder holds one `.safetensors` file per model, `config.json`, the
 model card [`hf/README.md`](hf/README.md) and [`hf/modeling.py`](hf/modeling.py), a loader that
@@ -133,7 +135,7 @@ python scripts/export_hf.py --out hf_export \
   --model small-1pct=checkpoints/fix_1_short/semi_edge_lab462_seed0.done.pt \
   --model small-5pct=checkpoints/gtmask_decay/semi_edge_lab2312_seed0.done.pt \
   --model small-25pct=checkpoints/gtmask_decay/semi_edge_lab11562_seed0.done.pt
-huggingface-cli upload <user>/<repo> hf_export .
+hf upload <user>/<repo> hf_export .
 ```
 
 Replace `<user>/<repo>` in the model card's code example before uploading.
