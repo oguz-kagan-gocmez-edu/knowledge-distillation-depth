@@ -40,6 +40,7 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `gtmask_decay` | E4 + decay at 1–100% with `--pool-gt --lambda-t-lab 0`: real depth on every labeled image in the batch, teacher only on unlabeled ones | 24k | 4 | 1.5 | done |
 | `gtmask_seeds` | `gtmask_decay` at 5% and 25% with seeds 1 and 2 | 24k | 4 | 1.5 | done |
 | `e1_25_seeds` | E1 at 25% with seeds 1 and 2, the baseline for `gtmask_seeds` at 25% | 24k | 2 | 0.7 | done |
+| `floor_1_5` | E4 + decay at 1% and 5%, teacher weight falls to 0.25 instead of 0 (`--teacher-floor 0.25`); validation only | 24k | 2 | 1 | to run |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -108,3 +109,13 @@ because the batches come in another order. So one seed can move AbsRel by ~0.004
 and the 25% results (E1 0.156, E4 + decay 0.159, GT mask 0.154) cannot be told apart yet. E1 at 25%
 has one seed; these two runs give it a 3-seed mean next to `gtmask_seeds`. The two groups can run at
 the same time on two sessions. Run after the test set, like `gtmask_seeds`.
+
+**Why `floor_1_5`:** with `--teacher-decay 0.5` the teacher weight falls to 0, and at 1% the
+student starts to memorize again once the teacher is gone (training SILog 0.162 → 0.098, validation
+AbsRel 0.175 → 0.183 at the last step). This run asks whether the harm comes from removing the
+teacher completely or from lowering its weight: the weight falls from 1 to 0.25 over the second half
+and stays there. Baselines on validation (best checkpoint, seed 0 or 3-seed mean): E4 0.176 at 1% and
+0.170 at 5% (`fix_1_short`, `main_5_short`), E4 + decay 0.175 and 0.163 (`decay_1_5_25`). Compare
+the best and the last-step validation AbsRel, and the training SILog, teacher loss and validation
+SILog in the log. Run after the test set and decided on validation only; it is not evaluated on the
+test set. If it helps, check 0.1 and 0.5 before drawing a conclusion.
