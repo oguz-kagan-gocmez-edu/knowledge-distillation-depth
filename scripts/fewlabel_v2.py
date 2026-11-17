@@ -233,6 +233,17 @@ def teacher_terms(pred, tdisp, with_edge, scales=4, w=None):
     return l_t, l_e / scales
 
 
+def val_silog(preds, gts, lam=0.85):
+    """The training SILog on validation images, computed per image and then averaged."""
+    out = []
+    for p, g in zip(preds, gts):
+        v = (g > MIN_D) & (g < MAX_D)
+        if v.any():
+            d = np.log(np.clip(p[v], MIN_D, MAX_D)) - np.log(g[v])
+            out.append(np.sqrt(max((d ** 2).mean() - lam * d.mean() ** 2, 0.0) + 1e-8))
+    return float(np.mean(out))
+
+
 def scale_ratio(preds, gts):
     """Median of (median predicted depth / median real depth) over images.
     1.0 = right scale; 1.8 = the student thinks everything is 1.8x farther."""
@@ -276,7 +287,8 @@ def run_signature(recipe, n_lab, seed, n_pool, args):
 
 
 OPTIONAL_DEFAULTS = {"teacher_decay": 0.0, "label_subset": 0, "aug": False,
-                     "weight_decay": 1e-4, "dropout": 0.0, "pool_gt": False, "lambda_t_lab": 1.0}
+                     "weight_decay": 1e-4, "dropout": 0.0, "pool_gt": False, "lambda_t_lab": 1.0,
+                     "teacher_floor": 0.0}
 
 
 def augment(x, d, t, gen, max_scale=1.25):
@@ -314,12 +326,12 @@ def labeled_indices(n_lab, n_pool, subset):
     return torch.from_numpy(order[:n_lab].copy())
 
 
-def teacher_weight(step, steps, ramp, decay):
-    """Ramps up over the first `ramp` of training, stays at 1, then falls linearly to 0
+def teacher_weight(step, steps, ramp, decay, floor=0.0):
+    """Ramps up over the first `ramp` of training, stays at 1, then falls linearly to `floor`
     over the last `decay` of training."""
     w = min(1.0, step / (ramp * steps)) if ramp > 0 else 1.0
     if decay > 0:
-        w *= min(1.0, max(0.0, (steps - step) / (decay * steps)))
+        w *= floor + (1.0 - floor) * min(1.0, max(0.0, (steps - step) / (decay * steps)))
     return w
 
 
@@ -422,7 +434,7 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         loss = l_gt
         if cfg["teacher"]:
             # ramp-up: the student first learns real depth, then the teacher term grows
-            ramp = teacher_weight(step, args.steps, args.ramp, args.teacher_decay)
+            ramp = teacher_weight(step, args.steps, args.ramp, args.teacher_decay, args.teacher_floor)
             w = None
             if args.lambda_t_lab != 1.0:               # teacher weight on images with real depth
                 w = torch.where(is_lab, args.lambda_t_lab, 1.0).float()
@@ -447,14 +459,19 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
             p_val = fz.predict(model, val["rgb"], device)
             m = fz.depth_metrics(p_val, val["depth"])
             m["scale"] = scale_ratio(p_val, val["depth"])
+            m["silog"] = val_silog(p_val, val["depth"])
             m["step"] = step
             hist.append(m)
             if best is None or m["AbsRel"] < best["AbsRel"]:
                 best = dict(m)
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             parts = "  ".join(f"{k} {np.mean(v[-args.eval_every:]):.3f}" for k, v in logs.items() if v)
-            print(f"    step {step:>5}  {parts}  | val AbsRel {m['AbsRel']:.3f}  "
-                  f"d1 {m['delta1']:.3f}  scale x{m['scale']:.2f}", flush=True)
+            w_t = ""
+            if cfg["teacher"]:
+                w_now = teacher_weight(step, args.steps, args.ramp, args.teacher_decay, args.teacher_floor)
+                w_t = f"  w_t {w_now:.2f}"
+            print(f"    step {step:>5}  {parts}{w_t}  | val AbsRel {m['AbsRel']:.3f}  "
+                  f"SILog {m['silog']:.3f}  d1 {m['delta1']:.3f}  scale x{m['scale']:.2f}", flush=True)
         if ckpt is not None and step < args.steps and (
                 step % args.ckpt_every == 0 or step == args.stop_after):
             checkpoint(step)
@@ -512,7 +529,9 @@ def main():
                     help="fraction of steps over which the teacher weight grows from 0 (0 = off)")
     ap.add_argument("--clip", type=float, default=1.0, help="gradient-norm clipping (0 = off)")
     ap.add_argument("--teacher-decay", type=float, default=0.0,
-                    help="fraction of steps at the end over which the teacher weight falls to 0 (0 = off)")
+                    help="fraction of steps at the end over which the teacher weight falls (0 = off)")
+    ap.add_argument("--teacher-floor", type=float, default=0.0,
+                    help="teacher weight at the end of --teacher-decay (0 = falls to 0)")
     ap.add_argument("--label-subset", type=int, default=0,
                     help="which images are labeled: 0 = first N of the pool (default), "
                          "k > 0 = first N of a random order seeded by k")

@@ -108,6 +108,30 @@ def test_teacher_weight(fewlabel):
     w = lambda step, decay: fewlabel.teacher_weight(step, 100, 0.3, decay)
     assert w(15, 0) == 0.5 and w(30, 0) == 1.0 and w(100, 0) == 1.0
     assert w(50, 0.5) == 1.0 and w(75, 0.5) == 0.5 and w(100, 0.5) == 0.0
+    f = lambda step: fewlabel.teacher_weight(step, 100, 0.3, 0.5, 0.25)    # falls to 0.25, not 0
+    assert f(15) == 0.5 and f(50) == 1.0 and f(75) == 0.625 and f(100) == 0.25
+
+
+def test_teacher_floor_keeps_old_signatures(fewlabel):
+    import argparse
+    keys = ("student", "teacher", "steps", "eval_every", "batch_size", "lr", "lambda_t", "lambda_e",
+            "ramp", "clip", "no_pretrained", "data", "n_val", "val_scene_frac", "seed")
+    old = argparse.Namespace(**{k: 0 for k in keys}, teacher_decay=0.5)
+    new = argparse.Namespace(**{k: 0 for k in keys}, teacher_decay=0.5, teacher_floor=0.0)
+    assert fewlabel.run_signature("gt", 4, 0, 32, new) == fewlabel.run_signature("gt", 4, 0, 32, old)
+    new.teacher_floor = 0.25
+    assert fewlabel.run_signature("gt", 4, 0, 32, new)["teacher_floor"] == 0.25
+
+
+def test_val_silog(fewlabel):
+    import numpy as np
+    g = np.full((1, 4, 4), 2.0, dtype=np.float32)
+    assert fewlabel.val_silog(g, g) < 1e-3
+    d = np.log(1.5)                                           # lambda 0.85: a scale costs sqrt(0.15) d
+    assert abs(fewlabel.val_silog(g * 1.5, g) - np.sqrt(0.15) * d) < 1e-4
+    p = g.copy()
+    p[0, :2] = 4.0                                            # a wrong shape costs more
+    assert fewlabel.val_silog(p, g) > fewlabel.val_silog(g * 1.5, g)
 
 
 def test_new_options_keep_old_signatures(fewlabel):
