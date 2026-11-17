@@ -40,7 +40,7 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `gtmask_decay` | E4 + decay at 1–100% with `--pool-gt --lambda-t-lab 0`: real depth on every labeled image in the batch, teacher only on unlabeled ones | 24k | 4 | 1.5 | done |
 | `gtmask_seeds` | `gtmask_decay` at 5% and 25% with seeds 1 and 2 | 24k | 4 | 1.5 | done |
 | `e1_25_seeds` | E1 at 25% with seeds 1 and 2, the baseline for `gtmask_seeds` at 25% | 24k | 2 | 0.7 | done |
-| `floor_1_5` | E4 + decay at 1% and 5%, teacher weight falls to 0.25 instead of 0 (`--teacher-floor 0.25`); validation only | 24k | 2 | 1 | to run |
+| `floor_1_5` | E4 + decay at 1% and 5%, teacher weight falls to 0.25 instead of 0 (`--teacher-floor 0.25`); validation only | 24k | 2 | 1 | done (not on the test set) |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |

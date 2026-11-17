@@ -174,6 +174,25 @@ falls linearly to 0 at 24k. E1 and E4 without decay are the 3-seed means of the 
 - With decay E4 is never clearly worse than E1 (all differences within ~2%, one seed).
 - At 25% the predicted scale drifts to ×0.93 at the last step.
 
+### `floor_1_5`: teacher weight falls to 0.25 instead of 0 (E4 + decay, seed 0, validation only)
+
+`--teacher-decay 0.5 --teacher-floor 0.25`: as `decay_1_5_25`, but the weight falls from 1 to 0.25
+over the second half. Run after the test set to ask whether the late overfitting at 1% comes from
+removing the teacher completely or from lowering its weight; decided on validation, not evaluated
+on the test set.
+
+| Labeled | E4 | E4 + decay to 0 | E4 + decay to 0.25 | Final AbsRel | Best at | Labeled SILog at 12k → 24k | Validation SILog at 12k → 24k |
+|---|---|---|---|---|---|---|---|
+| 1% | 0.176 | **0.175** | 0.176 | 0.177 | 21k | 0.162 → 0.111 | 0.219 → 0.216 |
+| 5% | 0.170 | **0.163** | 0.167 | 0.169 | 21k | 0.186 → 0.141 | 0.205 → 0.189 |
+
+- At 1% the floor stops the late overfitting: the labeled SILog ends at 0.111 instead of 0.098 and
+  validation stays flat to the last step (0.177 instead of 0.183). The best checkpoint does not
+  change (0.176 vs 0.175), since the checkpoint was already chosen before the overfitting began.
+- At 5% it lands between a constant teacher and the full decay: there the teacher is better turned
+  off completely.
+- All differences are 0.001–0.004, within one seed's noise, so 0.1 and 0.5 were not tried.
+
 ### `gtmask_decay`: teacher only on unlabeled images (E4 + decay, seed 0)
 
 `--pool-gt --lambda-t-lab 0` on top of `--teacher-decay 0.5`: SILog on every labeled image in the
