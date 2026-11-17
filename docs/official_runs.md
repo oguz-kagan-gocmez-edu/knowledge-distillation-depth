@@ -41,6 +41,10 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `gtmask_seeds` | `gtmask_decay` at 5% and 25% with seeds 1 and 2 | 24k | 4 | 1.5 | done |
 | `e1_25_seeds` | E1 at 25% with seeds 1 and 2, the baseline for `gtmask_seeds` at 25% | 24k | 2 | 0.7 | done |
 | `floor_1_5` | E4 + decay at 1% and 5%, teacher weight falls to 0.25 instead of 0 (`--teacher-floor 0.25`); validation only | 24k | 2 | 1 | done (not on the test set) |
+| `student_base_100` | E1 at 100% with the base student (EfficientNet-B0, 4.23M); validation only | 24k | 1 | 0.5 | to run |
+| `student_base_25` | E4 + decay + GT mask at 25% with the base student; validation only | 24k | 1 | 0.5 | to run |
+| `teacher_base_1_5` | E4 at 1% and 5% with Depth Anything V2 Base (97.5M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | to run |
+| `teacher_large_1_5` | E4 at 1% and 5% with Depth Anything V2 Large (335M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | to run |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -119,3 +123,21 @@ and stays there. Baselines on validation (best checkpoint, seed 0 or 3-seed mean
 the best and the last-step validation AbsRel, and the training SILog, teacher loss and validation
 SILog in the log. Run after the test set and decided on validation only; it is not evaluated on the
 test set. If it helps, check 0.1 and 0.5 before drawing a conclusion.
+
+**Why `student_base_100` and `student_base_25`:** at 1% the base student is barely better than the
+small one (E4 0.174 vs 0.176), since there the limit is the labels, not the model. With many labels
+capacity may matter more. These two runs use the best setting per budget (E1 at 100%, E4 + decay +
+GT mask at 25%) with the base student; compare with the small student on validation (E1 0.153 at
+100%, `budgets_25_100`; 0.155 ± 0.001 at 25%, `gtmask_decay` and `gtmask_seeds`; seed 0: 0.154).
+
+**Why `teacher_base_1_5` and `teacher_large_1_5`:** does a larger teacher teach the small student
+more? Same E4 setting as `fix_1_short` and `main_5_short` (small teacher, seed 0), with only
+`--teacher` changed. The first run of each preset computes the teacher's outputs for the pool and
+validation once (about 5 GB on Drive per teacher; Large takes the longest). The summary's
+"teacher (opt.)" line gives each teacher's aligned validation reference (small: 0.110). Base and
+Large are CC-BY-NC-4.0 (Small is Apache-2.0): students trained from them should be shared for
+non-commercial use only.
+
+These four presets run after the test set and are decided on validation. If a model from them is
+shared or reported with test numbers, say that it was evaluated after the main test, with settings
+fixed before.
