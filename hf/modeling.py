@@ -102,7 +102,7 @@ def predict(model, image):
     """PIL image or HxWx3 uint8 array -> depth in meters at the image's own size (numpy, HxW)."""
     import numpy as np
 
-    rgb = torch.from_numpy(np.asarray(image.convert("RGB") if hasattr(image, "convert") else image))
+    rgb = torch.from_numpy(np.array(image.convert("RGB") if hasattr(image, "convert") else image))  # a copy
     h, w = rgb.shape[:2]
     x = rgb.permute(2, 0, 1)[None].float().div(255)
     x = F.interpolate(x, size=(H, W), mode="bilinear", align_corners=False)

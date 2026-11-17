@@ -57,6 +57,10 @@ model = modeling.load_student("small-1pct", repo_id=REPO)
 
 from PIL import Image
 depth = modeling.predict(model, Image.open("room.jpg"))   # HxW numpy array, meters
+
+import matplotlib.pyplot as plt
+plt.imsave("depth.png", depth, cmap="inferno_r")            # near = bright, far = dark
+print(f"depth {depth.min():.2f}-{depth.max():.2f} m")
 ```
 
 `model(x)` takes a `(B, 3, 192, 256)` RGB tensor in [0, 1] and returns `(B, 192, 256)` depth in
