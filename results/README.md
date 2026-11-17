@@ -3,7 +3,8 @@
 Each folder has `report.json` (full config and metrics), `examples.png` and, for most runs,
 `run.log` (console output). Reports made after the project moved to git also record the commit.
 
-- **Teacher:** Depth Anything V2 Small (24.8M parameters) in every run.
+- **Teacher:** Depth Anything V2 Small (24.8M parameters) in every run except `teacher_base_1_5`
+  and `teacher_large_1_5` (Base 97.5M and Large 335M).
 - **Students:** tiny (~1M), small (3.15M, the default) and base (~4M).
 - **Recipes:** E1 `gt` (labels only), E2 `gt_t` (+ teacher on labeled images), E3 `semi`
   (+ teacher on all images), E4 `semi_edge` (E3 + edge loss).
@@ -192,6 +193,43 @@ on the test set.
 - At 5% it lands between a constant teacher and the full decay: there the teacher is better turned
   off completely.
 - All differences are 0.001–0.004, within one seed's noise, so 0.1 and 0.5 were not tried.
+
+### `teacher_base_1_5`, `teacher_large_1_5`, `student_base_25`, `student_base_100`: larger models (seed 0, validation only)
+
+Run after the test set with settings fixed beforehand, to ask whether a larger teacher or a larger
+student helps. Only `--teacher` or `--student` changes; everything else is the best setting for
+that budget. Not evaluated on the test set.
+
+**Larger teacher** (E4, small student; small-teacher baselines are seed 0 of `fix_1_short` and
+`main_5_short`)
+
+| Teacher | Parameters | Teacher, aligned (optimistic) | 1% best | 1% final | 5% best | 5% final |
+|---|---|---|---|---|---|---|
+| Small | 24.8M | 0.110 | 0.176 | 0.181 | 0.170 | 0.171 |
+| Base | 97.5M | **0.106** | 0.176 | 0.178 | 0.169 | 0.174 |
+| Large | 335.3M | 0.121 | 0.178 | 0.182 | **0.166** | 0.172 |
+
+**Larger student** (base = EfficientNet-B0, 4.23M, against the small 3.15M student)
+
+| Labeled | Recipe | Small student | Base student | Folders |
+|---|---|---|---|---|
+| 1% | E4 | 0.176 | 0.174 | `fix_1_short`, `students_1_base` |
+| 25% | E4 + decay + GT mask | 0.155 ± 0.001 (3 seeds) | **0.152** | `gtmask_decay`, `gtmask_seeds`, `student_base_25` |
+| 100% | E1 | 0.153 | 0.153 | `budgets_25_100`, `student_base_100` |
+
+- The teacher's size does not change the student: the three teachers are within 0.004 of each
+  other at both budgets, which is seed noise. This holds even though the Base teacher is itself 4%
+  better than Small.
+- At the cached input size (256×192) the Large teacher is worse than Small (0.121 vs 0.110). It
+  was trained at higher resolution; we did not test whether a larger input would close the gap.
+- A 35% larger student gives at most a small gain: −2% at 25% (one seed, outside the 3-seed spread
+  of the small student) and nothing at 100%.
+- With the base student too, 25% labels and the teacher match 100% labels without it
+  (0.152 vs 0.153).
+- Neither change closes the gap to the teacher reference (~0.11). The limit lies in the student's
+  setting (input size, metric scale from few labels), not in the teacher.
+- Licenses: Depth Anything V2 Base and Large are CC-BY-NC-4.0 (Small is Apache-2.0), so students
+  trained from them are for non-commercial use only.
 
 ### `gtmask_decay`: teacher only on unlabeled images (E4 + decay, seed 0)
 
@@ -427,6 +465,14 @@ its step for each seed); **final** = the last step. δ1–δ3: share of pixels w
 | `gtmask_seeds` | 5% (2,312) | E4 semi_edge + decay + GT mask | small | 24k | 2 (seeds 1, 2) | 0.163 | 0.646 | 0.746 | 0.939 | 0.985 | 0.071 | 24k | 0.163 | 0.646 | 0.746 |
 | `gtmask_seeds` | 25% (11,562) | E4 semi_edge + decay + GT mask | small | 24k | 2 (seeds 1, 2) | 0.155 | 0.623 | 0.765 | 0.948 | 0.987 | 0.069 | 24k | 0.155 | 0.623 | 0.765 |
 | `e1_25_seeds` | 25% (11,562) | E1 gt | small | 24k | 2 (seeds 1, 2) | 0.157 | 0.612 | 0.769 | 0.947 | 0.987 | 0.068 | 21–24k | 0.157 | 0.606 | 0.773 |
+| `floor_1_5` | 1% (462) | E4 semi_edge + decay to 0.25 | small | 24k | 1 | 0.176 | 0.714 | 0.715 | 0.918 | 0.972 | 0.081 | 21k | 0.177 | 0.701 | 0.720 |
+| `floor_1_5` | 5% (2,312) | E4 semi_edge + decay to 0.25 | small | 24k | 1 | 0.167 | 0.669 | 0.734 | 0.933 | 0.981 | 0.074 | 21k | 0.169 | 0.646 | 0.738 |
+| `teacher_base_1_5` | 1% (462) | E4 semi_edge, Base teacher | small | 24k | 1 | 0.176 | 0.703 | 0.721 | 0.920 | 0.974 | 0.078 | 21k | 0.178 | 0.693 | 0.723 |
+| `teacher_base_1_5` | 5% (2,312) | E4 semi_edge, Base teacher | small | 24k | 1 | 0.169 | 0.687 | 0.733 | 0.930 | 0.978 | 0.076 | 21k | 0.174 | 0.677 | 0.732 |
+| `teacher_large_1_5` | 1% (462) | E4 semi_edge, Large teacher | small | 24k | 1 | 0.178 | 0.720 | 0.716 | 0.912 | 0.969 | 0.081 | 21k | 0.182 | 0.704 | 0.721 |
+| `teacher_large_1_5` | 5% (2,312) | E4 semi_edge, Large teacher | small | 24k | 1 | 0.166 | 0.664 | 0.745 | 0.933 | 0.975 | 0.074 | 18k | 0.172 | 0.676 | 0.731 |
+| `student_base_25` | 25% (11,562) | E4 semi_edge + decay + GT mask | base | 24k | 1 | 0.152 | 0.600 | 0.784 | 0.951 | 0.989 | 0.066 | 21k | 0.154 | 0.619 | 0.768 |
+| `student_base_100` | 100% (46,248) | E1 gt | base | 24k | 1 | 0.153 | 0.588 | 0.782 | 0.955 | 0.989 | 0.066 | 18k | 0.155 | 0.599 | 0.775 |
 
 ---
 

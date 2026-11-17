@@ -434,6 +434,19 @@ worse (0.188): the teacher on the labeled images was what stopped the student fr
 them. The best teacher setting therefore depends on the label budget, and no single recipe wins
 everywhere.
 
+\subsection{Larger teacher and larger student}
+
+After the test, with settings fixed beforehand and on validation only, I changed only the teacher or
+only the student (seed 0). With Depth Anything V2 Base (97.5M) and Large (335M) as teachers, E4
+gets 0.176 and 0.178 at 1\% and 0.169 and 0.166 at 5\%, against 0.176 and 0.170 with Small: all
+within seed noise. This holds although the Base teacher is itself better than Small (aligned
+reference 0.106 vs.\ 0.110); at the cached $256\times192$ input the Large teacher is worse (0.121),
+which may be due to the low resolution, but I did not test this. The base student (EfficientNet-B0,
+4.23M) gets 0.152 at 25\% with decay and GT mask, against $0.155\pm0.001$ for the small student,
+and 0.153 at 100\% with E1, the same as the small student. So neither a 13$\times$ larger teacher nor a
+35\% larger student closes the gap to the teacher reference: the gain comes from the unlabeled
+images, not from model size.
+
 \subsection{Where the teacher helps: shape vs.\ scale}
 
 \begin{figure}[t]
@@ -545,7 +558,8 @@ than about 3\% clear, and ran three seeds for every claim that depends on smalle
 chosen from many validation runs. The best setting per budget in Table~\ref{tab:test} is thus
 slightly optimistic; the plain E1 vs.\ E4 comparison, fixed in the proposal, is not.
 
-\paragraph{One dataset and one teacher.} All results are on indoor NYU images with a single teacher.
+\paragraph{One dataset and one teacher.} All results are on indoor NYU images, and the main results
+use a single teacher (the larger teachers were tried on validation only, at one input size).
 The conclusions about scale may change outdoors, where depth ranges are larger and the teacher's
 weakness at far distances matters more.
 
