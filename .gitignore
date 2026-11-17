@@ -41,3 +41,4 @@ docs/course/
 
 # Agent files from another project
 .claude/
+hf_export/
