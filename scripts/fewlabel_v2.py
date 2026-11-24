@@ -30,6 +30,7 @@ import os
 os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
 import argparse
+import copy
 import csv
 import io
 import json
@@ -288,7 +289,7 @@ def run_signature(recipe, n_lab, seed, n_pool, args):
 
 OPTIONAL_DEFAULTS = {"teacher_decay": 0.0, "label_subset": 0, "aug": False,
                      "weight_decay": 1e-4, "dropout": 0.0, "pool_gt": False, "lambda_t_lab": 1.0,
-                     "teacher_floor": 0.0}
+                     "teacher_floor": 0.0, "ema": 0.0, "enc_lr": 1.0, "strong_aug": False}
 
 
 def augment(x, d, t, gen, max_scale=1.25):
@@ -316,6 +317,39 @@ def augment(x, d, t, gen, max_scale=1.25):
     gamma, bright, color = u(0.9, 1.1, 1, 1, 1), u(0.75, 1.25, 1, 1, 1), u(0.9, 1.1, 3, 1, 1)
     x = (x.clamp(0, 1) ** gamma * bright * color).clamp(0, 1)
     return x, d, t
+
+
+def strong_perturb(x, which, gen):
+    """Strong color perturbation of the student's input on the images in `which` (a bool mask).
+
+    As in Depth Anything: the teacher's targets come from the clean image (they are cached), and
+    the student must predict the same depth from a perturbed one. Only photometric changes, so
+    neither the teacher's target nor the real depth moves. Images with real depth are left as
+    they are, so the metric scale is still learned from clean inputs.
+    """
+    if not which.any():
+        return x
+    b, dev = x.shape[0], x.device
+    u = lambda lo, hi, *shape: (lo + (hi - lo) * torch.rand(b, *shape, generator=gen)).to(dev)
+    y = x.clamp(0, 1)
+    gray = (0.299 * y[:, 0] + 0.587 * y[:, 1] + 0.114 * y[:, 2])[:, None]
+    y = gray + u(0.4, 1.6, 1, 1, 1) * (y - gray)                          # saturation
+    mean = gray.mean(dim=(2, 3), keepdim=True)
+    y = mean + u(0.6, 1.4, 1, 1, 1) * (y - mean)                          # contrast
+    y = (y * u(0.6, 1.4, 1, 1, 1)).clamp(0, 1) ** u(0.7, 1.4, 1, 1, 1)   # brightness, gamma
+    to_gray = (torch.rand(b, generator=gen) < 0.2).to(dev).view(b, 1, 1, 1)
+    y = torch.where(to_gray, (0.299 * y[:, :1] + 0.587 * y[:, 1:2] + 0.114 * y[:, 2:]).expand_as(y), y)
+    blur = (torch.rand(b, generator=gen) < 0.5).to(dev)
+    if blur.any():                                                        # 5x5 Gaussian, sigma 0.1-2
+        sig = u(0.1, 2.0).view(b, 1)
+        k = torch.exp(-torch.arange(-2, 3, device=dev).float().view(1, 5) ** 2 / (2 * sig ** 2))
+        k = k / k.sum(1, keepdim=True)                                    # (b, 5)
+        z = F.pad(y, (2, 2, 2, 2), mode="reflect")
+        z = z.unfold(3, 5, 1) @ k.view(b, 1, 1, 5, 1)                     # horizontal
+        z = z[..., 0].unfold(2, 5, 1) @ k.view(b, 1, 1, 5, 1)             # vertical
+        y = torch.where(blur.view(b, 1, 1, 1), z[..., 0], y)
+    y = y.clamp(0, 1)
+    return torch.where(which.view(b, 1, 1, 1), y, x)
 
 
 def labeled_indices(n_lab, n_pool, subset):
@@ -379,9 +413,22 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
     gen = torch.Generator().manual_seed(seed)
     model = fz.Student(args.student, pretrained=not args.no_pretrained,
                        dropout=args.dropout).to(device)
-    opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.steps,
+    # --enc-lr: the pretrained encoder learns more slowly than the new decoder
+    if args.enc_lr == 1.0:                         # one group, as before (older checkpoints resume)
+        groups, lrs = model.parameters(), args.lr
+    else:
+        enc = [p for n, p in model.named_parameters() if n.startswith("enc.")]
+        rest = [p for n, p in model.named_parameters() if not n.startswith("enc.")]
+        lrs = [args.lr * args.enc_lr, args.lr]
+        groups = [{"params": enc, "lr": lrs[0]}, {"params": rest, "lr": lrs[1]}]
+    opt = torch.optim.AdamW(groups, lr=args.lr, weight_decay=args.weight_decay)
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lrs, total_steps=args.steps,
                                                 pct_start=max(0.1, 3 / args.steps))
+    # --ema: an exponential moving average of the weights is evaluated and kept instead
+    ema = copy.deepcopy(model).eval() if args.ema > 0 else None
+    for p in (ema.parameters() if ema is not None else ()):
+        p.requires_grad_(False)
+    evaluated = ema if ema is not None else model
     rgb, depth, disp = pool["rgb"], pool["depth"], pool["disp"]   # numpy, maybe memory-mapped
     lab = labeled_indices(n_lab, n_pool, args.label_subset)
 
@@ -392,6 +439,8 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         if c["signature"] != sig:
             raise SystemExit(f"{ckpt} was made with other settings; use another --ckpt-dir")
         model.load_state_dict(c["model"])
+        if ema is not None:
+            ema.load_state_dict(c["ema"])
         opt.load_state_dict(c["opt"])
         sched.load_state_dict(c["sched"])
         gen.set_state(c["gen"])
@@ -403,6 +452,7 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
     def checkpoint(step):
         _save({"signature": sig, "step": step, "seconds": spent + time.perf_counter() - t_start,
                "model": model.state_dict(), "opt": opt.state_dict(), "sched": sched.state_dict(),
+               "ema": ema.state_dict() if ema is not None else None,
                "gen": gen.get_state(), "rng": _rng_states(), "best": best,
                "best_state": best_state, "history": hist, "logs": logs}, ckpt)
 
@@ -427,6 +477,8 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         x, d, t, is_lab = x.to(device), d.to(device), t.to(device), is_lab.to(device)
         if args.aug:
             x, d, t = augment(x, d, t, gen, args.aug_scale)
+        if args.strong_aug:
+            x = strong_perturb(x, ~is_lab, gen)
 
         pred = model(x)
         mask = (d > MIN_D) & (d < MAX_D) & is_lab.view(-1, 1, 1)
@@ -450,13 +502,21 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
         opt.step()
         sched.step()
+        if ema is not None:
+            decay = min(args.ema, (1 + step) / (10 + step))   # short warm-up: early weights fade fast
+            with torch.no_grad():
+                for e, v in zip(ema.state_dict().values(), model.state_dict().values()):
+                    if e.dtype.is_floating_point:
+                        e.mul_(decay).add_(v, alpha=1 - decay)
+                    else:
+                        e.copy_(v)                             # e.g. BatchNorm's batch counter
         logs["gt"].append(l_gt.item())
 
         if step == start + 49:
             el = time.perf_counter() - t_start
             print(f"    ~{el / 50 * (args.steps - start + 1) / 60:.0f} min left for this run")
         if step % args.eval_every == 0 or step == args.steps:
-            p_val = fz.predict(model, val["rgb"], device)
+            p_val = fz.predict(evaluated, val["rgb"], device)
             m = fz.depth_metrics(p_val, val["depth"])
             m["scale"] = scale_ratio(p_val, val["depth"])
             m["silog"] = val_silog(p_val, val["depth"])
@@ -464,7 +524,7 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
             hist.append(m)
             if best is None or m["AbsRel"] < best["AbsRel"]:
                 best = dict(m)
-                best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+                best_state = {k: v.detach().cpu().clone() for k, v in evaluated.state_dict().items()}
             parts = "  ".join(f"{k} {np.mean(v[-args.eval_every:]):.3f}" for k, v in logs.items() if v)
             w_t = ""
             if cfg["teacher"]:
@@ -479,7 +539,7 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
             print(f"stopped after step {step} (--stop-after); run again to resume")
             raise SystemExit(0)
 
-    final_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
+    final_state = {k: v.detach().cpu().clone() for k, v in evaluated.state_dict().items()}
     model.load_state_dict(best_state)
     preds = fz.predict(model, val["rgb"], device)
     seconds = spent + time.perf_counter() - t_start
@@ -545,6 +605,12 @@ def main():
                     help="also use the real depth of labeled images drawn in the pool half (E3/E4)")
     ap.add_argument("--lambda-t-lab", type=float, default=1.0,
                     help="teacher weight on images with real depth, relative to unlabeled ones")
+    ap.add_argument("--ema", type=float, default=0.0,
+                    help="evaluate and keep a moving average of the weights (e.g. 0.999; 0 = off)")
+    ap.add_argument("--enc-lr", type=float, default=1.0,
+                    help="encoder learning rate as a fraction of --lr (e.g. 0.1)")
+    ap.add_argument("--strong-aug", action="store_true",
+                    help="strong color perturbation and blur on the student's input, unlabeled images only")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/fewlabel_v2")
     ap.add_argument("--cache-dir", default="cache",

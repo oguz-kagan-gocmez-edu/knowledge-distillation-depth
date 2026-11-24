@@ -45,6 +45,8 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `student_base_25` | E4 + decay + GT mask at 25% with the base student; validation only | 24k | 1 | 0.5 | done (not on the test set) |
 | `teacher_base_1_5` | E4 at 1% and 5% with Depth Anything V2 Base (97.5M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | done (not on the test set) |
 | `teacher_large_1_5` | E4 at 1% and 5% with Depth Anything V2 Large (335M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | done (not on the test set) |
+| `ema_1_5` | E4 at 1% and 5% with an average of the weights (`--ema 0.999`) and a 10× lower encoder learning rate (`--enc-lr 0.1`); validation only | 24k | 2 | 1.5 | to run |
+| `strongaug_1_5` | E4 at 1% and 5% with strong color perturbation and blur on the student's input for unlabeled images (`--strong-aug`); validation only | 24k | 2 | 1.5 | to run |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -145,3 +147,15 @@ fixed before.
 **Outcome:** neither change moves the student beyond seed noise. Small, Base and Large teachers give
 0.176/0.176/0.178 at 1% and 0.170/0.169/0.166 at 5%; the base student gives 0.152 at 25% (small:
 0.155) and 0.153 at 100% (small: 0.153). Details in `results/README.md`.
+
+**Why `ema_1_5` and `strongaug_1_5`:** at 1% the student memorizes its 462 labeled images, and
+the usual regularizers (augmentation, weight decay, dropout) did not stop it. These are the two
+untried methods from the literature that cost no extra training time. `--ema 0.999` evaluates
+and keeps an exponential moving average of the weights, which smooths the late overfitting.
+`--enc-lr 0.1` lets the ImageNet encoder move ten times more slowly than the new decoder.
+`--strong-aug` is Depth Anything's perturbed student: the unlabeled images reach the student with
+strong color changes and blur, while the teacher's targets come from the clean image; images with
+real depth stay clean. Baselines on validation (seed 0, E4): 0.176 at 1% (`fix_1_short`) and 0.170
+at 5% (`main_5_short`); seed spread about ±0.002. A change counts only if it is clearly larger than
+that, and if one helps, it is checked with seeds 1 and 2 before any claim. Run after the test set
+and decided on validation only.

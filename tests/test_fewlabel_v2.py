@@ -263,3 +263,43 @@ def test_measure_speed(tmp_path):
     rows = json.loads((tmp_path / "report.json").read_text())["rows"]
     assert [r["model"] for r in rows] == ["Student tiny", "Student small", "Student base"]
     assert abs(rows[1]["params_M"] - 3.15) < 0.01
+
+
+def test_ema_enc_lr_strong_aug_keep_old_signatures(fewlabel):
+    import argparse
+    keys = ("student", "teacher", "steps", "eval_every", "batch_size", "lr", "lambda_t", "lambda_e",
+            "ramp", "clip", "no_pretrained", "data", "n_val", "val_scene_frac", "seed")
+    old = argparse.Namespace(**{k: 0 for k in keys})
+    new = argparse.Namespace(**{k: 0 for k in keys}, ema=0.0, enc_lr=1.0, strong_aug=False)
+    assert fewlabel.run_signature("gt", 4, 0, 32, new) == fewlabel.run_signature("gt", 4, 0, 32, old)
+    new.ema, new.enc_lr, new.strong_aug = 0.999, 0.1, True
+    sig = fewlabel.run_signature("gt", 4, 0, 32, new)
+    assert (sig["ema"], sig["enc_lr"], sig["strong_aug"]) == (0.999, 0.1, True)
+
+
+def test_strong_perturb(fewlabel):
+    gen = torch.Generator().manual_seed(0)
+    x = torch.rand(6, 3, 24, 32)
+    which = torch.tensor([False, True, False, True, True, True])
+    y = fewlabel.strong_perturb(x, which, gen)
+    assert y.shape == x.shape and y.min() >= 0 and y.max() <= 1
+    assert torch.equal(y[~which], x[~which])                 # images with real depth stay clean
+    assert all(not torch.allclose(y[i], x[i]) for i in torch.nonzero(which)[:, 0])
+    y2 = fewlabel.strong_perturb(x, which, torch.Generator().manual_seed(0))
+    assert torch.equal(y, y2)                                 # reproducible from the generator
+    assert torch.equal(fewlabel.strong_perturb(x, torch.zeros(6, dtype=torch.bool), gen), x)
+
+
+def test_ema_options_resume_like_an_uninterrupted_run(tmp_path):
+    opts = ("--recipes", "semi_edge", "--ema", "0.9", "--enc-lr", "0.1", "--strong-aug")
+    run(tmp_path, "--out", str(tmp_path / "a"), "--ckpt-dir", str(tmp_path / "ck_a"), *opts)
+    run(tmp_path, "--out", str(tmp_path / "b"), "--ckpt-dir", str(tmp_path / "ck_b"), *opts,
+        "--stop-after", "5")
+    run(tmp_path, "--out", str(tmp_path / "b"), "--ckpt-dir", str(tmp_path / "ck_b"), *opts)
+    a, b = results(tmp_path / "a"), results(tmp_path / "b")
+    for k in a:
+        assert a[k]["runs"][0]["history"] == b[k]["runs"][0]["history"], k
+    # the averaged weights are what is evaluated: without --ema the same run scores differently
+    run(tmp_path, "--out", str(tmp_path / "c"), *opts[:2], "--enc-lr", "0.1", "--strong-aug")
+    c = results(tmp_path / "c")
+    assert any(a[k]["runs"][0]["history"] != c[k]["runs"][0]["history"] for k in a)
