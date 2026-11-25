@@ -303,3 +303,86 @@ def test_ema_options_resume_like_an_uninterrupted_run(tmp_path):
     run(tmp_path, "--out", str(tmp_path / "c"), *opts[:2], "--enc-lr", "0.1", "--strong-aug")
     c = results(tmp_path / "c")
     assert any(a[k]["runs"][0]["history"] != c[k]["runs"][0]["history"] for k in a)
+
+
+def _fake_places(tmp):
+    """A Places365-like layout: 4 classes (2 indoor), 3 images each, mixed aspect ratios."""
+    from PIL import Image
+    imgs = tmp / "val_large"
+    imgs.mkdir()
+    cats = ["/a/attic", "/b/beach", "/k/kitchen", "/m/mountain"]
+    io_flags = [1, 2, 1, 2]
+    rng = np.random.RandomState(0)
+    lines = []
+    for c in range(4):
+        for j in range(3):
+            name = f"Places365_val_{c * 3 + j:08d}.jpg"
+            w, h = [(683, 512), (512, 768), (512, 512)][j]
+            Image.fromarray(rng.randint(0, 255, (h, w, 3), dtype=np.uint8)).save(imgs / name)
+            lines.append(f"{name} {c}")
+    (tmp / "val.txt").write_text("\n".join(lines) + "\n")
+    (tmp / "cats.txt").write_text("\n".join(f"{n} {i}" for i, n in enumerate(cats)) + "\n")
+    (tmp / "io.txt").write_text("\n".join(f"{n} {f}" for n, f in zip(cats, io_flags)) + "\n")
+    return ["--images", str(imgs), "--list", str(tmp / "val.txt"), "--categories",
+            str(tmp / "cats.txt"), "--io", str(tmp / "io.txt")]
+
+
+def _prepare_places():
+    spec = importlib.util.spec_from_file_location("prepare_places", ROOT / "scripts" / "prepare_places.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_prepare_places_keeps_indoor_images_at_4_3(tmp_path):
+    import io as _io
+    import zipfile
+
+    from PIL import Image
+    pp = _prepare_places()
+    out = tmp_path / "indoor.zip"
+    pp.main([*_fake_places(tmp_path), "--out", str(out)])
+    z = zipfile.ZipFile(out)
+    rows = [r.split("\t") for r in z.read("list.txt").decode().split("\n") if r]
+    assert len(rows) == 6 and {c for _, c in rows} == {"/a/attic", "/k/kitchen"}
+    for name, _ in rows:
+        assert Image.open(_io.BytesIO(z.read(name))).size == (pp.OUT_W, pp.OUT_H)
+    (tmp_path / "x").mkdir()
+    pp.main([*_fake_places(tmp_path / "x"), "--out", str(tmp_path / "two.zip"), "--per-class", "2"])
+    assert len(zipfile.ZipFile(tmp_path / "two.zip").read("list.txt").decode().split()) == 2 * 2 * 2
+
+
+def test_gather_reads_extra_images_without_depth(fewlabel):
+    pool = {"rgb": np.full((4, 2, 3, 3), 1, np.uint8), "depth": np.full((4, 2, 3), 2.0, np.float32),
+            "disp": np.full((4, 2, 3), 3.0, np.float16)}
+    extra = {"rgb": np.full((2, 2, 3, 3), 7, np.uint8), "disp": np.full((2, 2, 3), 9.0, np.float16)}
+    rgb, depth, disp = fewlabel.gather(pool, extra, np.array([0, 5, 3, 4]))
+    assert rgb[:, 0, 0, 0].tolist() == [1, 7, 1, 7]
+    assert depth[:, 0, 0].tolist() == [2, 0, 2, 0]                    # extra images: no label
+    assert disp[:, 0, 0].tolist() == [3, 9, 3, 9]
+    same = fewlabel.gather(pool, extra, np.array([1, 2]))
+    assert all(np.array_equal(a, pool[k][[1, 2]]) for a, k in zip(same, ("rgb", "depth", "disp")))
+
+
+def test_extra_pool_runs_and_changes_only_e3_e4(tmp_path):
+    zp = tmp_path / "indoor.zip"
+    _prepare_places().main([*_fake_places(tmp_path), "--out", str(zp)])
+    run(tmp_path, "--out", str(tmp_path / "a"), "--ckpt-dir", str(tmp_path / "ck_a"))
+    run(tmp_path, "--out", str(tmp_path / "b"), "--ckpt-dir", str(tmp_path / "ck_b"), "--extra-pool", str(zp))
+    rep = json.loads((tmp_path / "b" / "report.json").read_text())
+    assert rep["data"]["extra"] == 6
+    cdir = next((tmp_path / "cache").glob("extra6_*"))
+    assert (cdir / "disp_small.npy").exists() and not (cdir / "depth.npy").exists()
+    a, b = results(tmp_path / "a"), results(tmp_path / "b")
+    assert a["8/gt"]["runs"][0]["history"] == b["8/gt"]["runs"][0]["history"]   # E1 ignores them
+    assert a["8/semi_edge"]["runs"][0]["history"] != b["8/semi_edge"]["runs"][0]["history"]
+    sig = torch.load(tmp_path / "ck_b" / "semi_edge_lab8_seed0.done.pt", weights_only=False)["signature"]
+    assert sig["extra"]["n"] == 6
+    gt_sig = torch.load(tmp_path / "ck_b" / "gt_lab8_seed0.done.pt", weights_only=False)["signature"]
+    assert "extra" not in gt_sig
+    # resume with the extra pool gives the same run as without interruption
+    run(tmp_path, "--out", str(tmp_path / "c"), "--ckpt-dir", str(tmp_path / "ck_c"), "--extra-pool", str(zp),
+        "--stop-after", "5")
+    run(tmp_path, "--out", str(tmp_path / "c"), "--ckpt-dir", str(tmp_path / "ck_c"), "--extra-pool", str(zp))
+    c = results(tmp_path / "c")
+    assert all(b[k]["runs"][0]["history"] == c[k]["runs"][0]["history"] for k in b)

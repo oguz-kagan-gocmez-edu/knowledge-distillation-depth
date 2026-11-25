@@ -49,6 +49,7 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `strongaug_1_5` | E4 at 1% and 5% with strong color perturbation and blur on the student's input for unlabeled images (`--strong-aug`); validation only | 24k | 2 | 1.5 | done: 0.176 at 1% (same), 0.164 at 5% (better) |
 | `ema_only_1_5` | as `ema_1_5` but with the normal encoder learning rate, to see EMA on its own; validation only | 24k | 2 | 1.5 | to run |
 | `strongaug_decay_5` | `gtmask_decay` at 5% with `--strong-aug`, seeds 0, 1, 2; validation only | 24k | 3 | 2.5 | to run |
+| `places_1_5` | E4 at 1% and 5% with ~16K extra unlabeled indoor images from Places365 (`--extra-pool`, made by `scripts/prepare_places.py`); validation only | 24k | 2 | 1.5 (+ teacher pass on the extra images) | to run |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -176,3 +177,14 @@ labeled ones. At 5% it lowered E4 from 0.170 (3 seeds, ±0.000) to 0.164, below 
 longer loses to labels alone. The best 5% recipe so far is `gtmask_decay` (about 0.162 on validation
 over seeds 0–2), so `strongaug_decay_5` adds `--strong-aug` to that recipe with three seeds to see
 whether the two gains add up.
+
+**Why `places_1_5`:** the student learns the shape of a scene from the teacher, but only on 46K
+frames of 249 rooms, many of them nearly the same, while validation is 25 unseen rooms. Depth
+Anything got its students from tens of millions of varied unlabeled images. `places_1_5` adds the
+indoor validation images of Places365 (161 indoor classes, ~16K images, center-cropped to 4:3) to
+the unlabeled half of each E4 batch. They have no real depth, so the metric scale still comes from
+the NYU labels only; the question is whether more varied views of indoor scenes improve the shape
+on unseen rooms. Baselines: 0.176 at 1% (`fix_1_short`) and 0.170 at 5% (`main_5_short`). Places365
+is for non-commercial research and education and must not be redistributed, so neither the images
+nor the zip are in this repository, and models trained with them are not part of the Hugging Face
+release. Run after the test set and decided on validation only.
