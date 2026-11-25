@@ -46,8 +46,9 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `teacher_base_1_5` | E4 at 1% and 5% with Depth Anything V2 Base (97.5M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | done (not on the test set) |
 | `teacher_large_1_5` | E4 at 1% and 5% with Depth Anything V2 Large (335M) as the teacher; validation only | 24k | 2 | 1.5 (+ teacher pass) | done (not on the test set) |
 | `ema_1_5` | E4 at 1% and 5% with an average of the weights (`--ema 0.999`) and a 10× lower encoder learning rate (`--enc-lr 0.1`); validation only | 24k | 2 | 1.5 | done: worse (0.194 at 1%, 0.186 at 5%) |
-| `strongaug_1_5` | E4 at 1% and 5% with strong color perturbation and blur on the student's input for unlabeled images (`--strong-aug`); validation only | 24k | 2 | 1.5 | to run |
+| `strongaug_1_5` | E4 at 1% and 5% with strong color perturbation and blur on the student's input for unlabeled images (`--strong-aug`); validation only | 24k | 2 | 1.5 | done: 0.176 at 1% (same), 0.164 at 5% (better) |
 | `ema_only_1_5` | as `ema_1_5` but with the normal encoder learning rate, to see EMA on its own; validation only | 24k | 2 | 1.5 | to run |
+| `strongaug_decay_5` | `gtmask_decay` at 5% with `--strong-aug`, seeds 0, 1, 2; validation only | 24k | 3 | 2.5 | to run |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -168,3 +169,10 @@ in `teacher_base_1_5`, and the best checkpoint was the last one. The logged trai
 from the trained weights, not the average, so the slow encoder is the likely cause: the ImageNet
 encoder has to adapt to depth. The run changed two things at once, so `ema_only_1_5` keeps the
 average of the weights and drops `--enc-lr`.
+
+**Outcome of `strongaug_1_5` and why `strongaug_decay_5`:** at 1% the strong perturbation changed
+nothing (0.176, as the baseline); it touches only unlabeled images, while the student memorizes the
+labeled ones. At 5% it lowered E4 from 0.170 (3 seeds, ±0.000) to 0.164, below E1 (0.166), so E4 no
+longer loses to labels alone. The best 5% recipe so far is `gtmask_decay` (about 0.162 on validation
+over seeds 0–2), so `strongaug_decay_5` adds `--strong-aug` to that recipe with three seeds to see
+whether the two gains add up.
