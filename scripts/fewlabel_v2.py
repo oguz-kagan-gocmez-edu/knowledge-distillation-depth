@@ -22,6 +22,8 @@ Run from the repository root:
   python scripts/fewlabel_v2.py                 # E1-E4, 250 of 5000 images labeled (5%), ~40 min
   python scripts/fewlabel_v2.py --labeled 1%,5%,25%,100% --recipes gt,semi_edge
                                       # mini E5 sweep (1/5/25/100%), ~75 min
+--extra-pool adds unlabeled images without real depth (scripts/prepare_places.py) to the
+unlabeled half of E3/E4 batches.
 Data defaults to data/nyu_data (zip or folder). Results go to results/fewlabel_v2/,
 the data + teacher cache to cache/.
 """
@@ -202,6 +204,71 @@ def build_data(args, device):
     val = {k: np.asarray(v) for k, v in val.items()}           # small: keep in RAM
     loaded.clear()                                             # free the teacher's memory
     return pool, val, meta
+
+
+def open_extra(path):
+    """Extra unlabeled images (scripts/prepare_places.py): a zip or folder with list.txt and images.
+    Returns the image names in list order and a function that reads one image's bytes."""
+    path = Path(path).expanduser()
+    if path.is_dir():
+        read = lambda nm: (path / nm).read_bytes()
+    elif path.is_file():
+        z = zipfile.ZipFile(path)
+        read = z.read
+    else:
+        raise SystemExit(f"--extra-pool: {path} does not exist")
+    try:
+        text = read("list.txt").decode("utf-8")
+    except (KeyError, FileNotFoundError):
+        raise SystemExit(f"--extra-pool: no list.txt in {path}") from None
+    names = [line.split("\t")[0] for line in text.split("\n") if line.strip()]
+    if not names:
+        raise SystemExit(f"--extra-pool: list.txt in {path} is empty")
+    return names, read
+
+
+def build_extra(args, device):
+    """Extra unlabeled images and their teacher outputs ({"rgb", "disp", "key"}), or None.
+
+    They have no real depth: they only add views for the teacher term, in the unlabeled half of
+    each batch. The cache folder is named after the image list, so the notebook's teacher-cache
+    copy to Drive keeps their teacher outputs too.
+    """
+    if not args.extra_pool:
+        return None
+    names, read = open_extra(args.extra_pool)
+    key = poolcache.list_hash(names)
+    cdir = Path(args.cache_dir) / f"extra{len(names)}_{key}"
+
+    def make_teacher():
+        t = fz.DummyTeacher() if args.data == "dummy" else fz.DepthAnythingTeacher(args.teacher, device)
+        print(f"  teacher: {t.name}")
+        return t
+
+    def samples():
+        for nm in names:
+            yield Image.open(io.BytesIO(read(nm))).convert("RGB"), None
+
+    extra = poolcache.build(cdir, len(names), samples, key, make_teacher, args.teacher,
+                            args.teacher_batch, "extra", with_depth=False)
+    extra["key"] = key
+    return extra
+
+
+def gather(pool, extra, ii):
+    """Images, real depth and teacher output at pool positions ii (numpy). Positions from
+    len(pool) on are extra images; they have no real depth (0 = no label)."""
+    n_pool = len(pool["rgb"])
+    if extra is None or (ii < n_pool).all():
+        return pool["rgb"][ii], pool["depth"][ii], pool["disp"][ii]
+    own, ext = ii < n_pool, ii >= n_pool
+    rgb = np.empty((len(ii), *pool["rgb"].shape[1:]), pool["rgb"].dtype)
+    depth = np.zeros((len(ii), *pool["depth"].shape[1:]), pool["depth"].dtype)
+    disp = np.empty((len(ii), *pool["disp"].shape[1:]), pool["disp"].dtype)
+    if own.any():
+        rgb[own], depth[own], disp[own] = (pool[k][ii[own]] for k in ("rgb", "depth", "disp"))
+    rgb[ext], disp[ext] = extra["rgb"][ii[ext] - n_pool], extra["disp"][ii[ext] - n_pool]
+    return rgb, depth, disp
 
 
 # ----------------------------------------------------------------------------
@@ -392,10 +459,13 @@ def _save(obj, path):
     os.replace(tmp, path)                      # never leaves a half-written checkpoint
 
 
-def train_run(recipe, n_lab, seed, pool, val, args, device):
+def train_run(recipe, n_lab, seed, pool, val, args, device, extra=None):
     cfg = RECIPES[recipe]
     n_pool, bs = len(pool["rgb"]), args.batch_size
     sig = run_signature(recipe, n_lab, seed, n_pool, args)
+    n_extra = len(extra["rgb"]) if extra is not None and cfg["pool"] == "all" else 0
+    if n_extra:                                    # only E3/E4 draw from the unlabeled pool
+        sig["extra"] = {"n": n_extra, "key": extra["key"]}
     ckpt = done = None
     if args.ckpt_dir:
         cdir = Path(args.ckpt_dir)
@@ -462,14 +532,18 @@ def train_run(recipe, n_lab, seed, pool, val, args, device):
         if cfg["pool"] == "all":                       # half labeled, half from all images
             n_l = bs // 2
             idx = torch.cat([lab[torch.randint(0, n_lab, (n_l,), generator=gen)],
-                             torch.randint(0, n_pool, (bs - n_l,), generator=gen)])
+                             torch.randint(0, n_pool + n_extra, (bs - n_l,), generator=gen)])
             is_lab = torch.arange(bs) < n_l
         else:
             idx = lab[torch.randint(0, n_lab, (bs,), generator=gen)]
             is_lab = torch.ones(bs, dtype=torch.bool)
         ii = idx.numpy()
-        x = torch.from_numpy(rgb[ii]).permute(0, 3, 1, 2).float().div(255)
-        d, t = torch.from_numpy(depth[ii]), torch.from_numpy(disp[ii]).float()
+        if n_extra:
+            b_rgb, b_depth, b_disp = gather(pool, extra, ii)
+        else:
+            b_rgb, b_depth, b_disp = rgb[ii], depth[ii], disp[ii]
+        x = torch.from_numpy(b_rgb).permute(0, 3, 1, 2).float().div(255)
+        d, t = torch.from_numpy(b_depth), torch.from_numpy(b_disp).float()
         flip = torch.rand(bs, generator=gen) < 0.5
         x[flip], d[flip], t[flip] = x[flip].flip(-1), d[flip].flip(-1), t[flip].flip(-1)
         if args.pool_gt:                               # pool images that are labeled count as labeled
@@ -611,6 +685,9 @@ def main():
                     help="encoder learning rate as a fraction of --lr (e.g. 0.1)")
     ap.add_argument("--strong-aug", action="store_true",
                     help="strong color perturbation and blur on the student's input, unlabeled images only")
+    ap.add_argument("--extra-pool", default=None,
+                    help="zip or folder of extra unlabeled images (scripts/prepare_places.py), "
+                         "drawn with the pool in the unlabeled half of E3/E4 batches")
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="results/fewlabel_v2")
     ap.add_argument("--cache-dir", default="cache",
@@ -648,9 +725,13 @@ def main():
 
     print("\n[1/3] Data (validation = held-out rooms) and teacher outputs")
     pool, val, meta = build_data(args, device)
+    extra = build_extra(args, device)
+    if extra is not None:
+        meta = {**meta, "extra": len(extra["rgb"]), "extra_key": extra["key"]}
+        print(f"  extra unlabeled images: {len(extra['rgb'])} (E3/E4 only)")
     if args.prepare_only:
         print(f"Cache ready in {args.cache_dir} (--prepare-only): pool {len(pool['rgb'])}, "
-              f"val {len(val['rgb'])}")
+              f"val {len(val['rgb'])}" + (f", extra {len(extra['rgb'])}" if extra is not None else ""))
         return
     budgets = parse_budgets(args.labeled, len(pool["rgb"]))
     if device.type == "mps":
@@ -671,7 +752,7 @@ def main():
             runs = []
             for seed in seeds:
                 print(f"  -- {RECIPES[recipe]['exp']} {recipe}, {n_lab} labeled, seed {seed}")
-                best, hist, preds, secs = train_run(recipe, n_lab, seed, pool, val, args, device)
+                best, hist, preds, secs = train_run(recipe, n_lab, seed, pool, val, args, device, extra)
                 runs.append({"best": best, "history": hist, "minutes": secs / 60})
                 if n_lab == budgets[0] and seed == seeds[0]:
                     fig_preds[recipe] = preds

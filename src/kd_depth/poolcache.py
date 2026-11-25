@@ -29,18 +29,21 @@ def list_hash(items):
     return h.hexdigest()[:16]
 
 
-def _specs(n, teacher_tag):
-    return {
+def _specs(n, teacher_tag, with_depth=True):
+    specs = {
         "rgb": ((n, H, W, 3), np.uint8),
         "depth": ((n, H, W), np.float32),
         f"disp_{teacher_tag}": ((n, H, W), np.float16),   # raw relative inverse depth
     }
+    if not with_depth:                                     # images without real depth
+        del specs["depth"]
+    return specs
 
 
-def build(cdir, n, samples, key, teacher_factory, teacher_tag, bs=8, tag="pool"):
-    """Return {"rgb", "depth", "disp"} as read-only memory-mapped arrays.
+def build(cdir, n, samples, key, teacher_factory, teacher_tag, bs=8, tag="pool", with_depth=True):
+    """Return {"rgb", "depth", "disp"} as read-only memory-mapped arrays ("depth" only if with_depth).
 
-    samples:          callable returning an iterator of (PIL RGB image, depth in meters)
+    samples:          callable returning an iterator of (PIL RGB image, depth in meters or None)
     key:              fingerprint of the image list (see list_hash)
     teacher_factory:  callable returning the teacher; only called if the teacher file is missing
     """
@@ -53,7 +56,7 @@ def build(cdir, n, samples, key, teacher_factory, teacher_tag, bs=8, tag="pool")
         if old != meta:
             raise SystemExit(f"{cdir} was built for different images ({old}, now {meta}). "
                              "Delete that folder or use another --cache-dir.")
-    specs = _specs(n, teacher_tag)
+    specs = _specs(n, teacher_tag, with_depth)
     missing = [k for k in specs if not (cdir / f"{k}.npy").exists()]
     if missing:
         need_teacher = any(k.startswith("disp") for k in missing)

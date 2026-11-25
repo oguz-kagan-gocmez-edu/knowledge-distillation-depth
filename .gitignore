@@ -42,3 +42,7 @@ docs/course/
 # Agent files from another project
 .claude/
 hf_export/
+# Places365 images (terms forbid redistribution)
+places_indoor*.zip
+val_large/
+*.tar
