@@ -47,6 +47,12 @@ per-image scaling the error falls by 19%, so the metric scale still has to come 
 
 ![Test AbsRel by label budget](figures/test_budget.png)
 
+Four evenly spaced test images, with the real depth, the teacher, the student with labels only (E1)
+and with the teacher (E4) at 1% labels, and E1 with all labels; the last two columns show the
+relative error of E1 and E4 at 1% (made by `scripts/qualitative.py`):
+
+![Test images: real depth, teacher and students](figures/qualitative.png)
+
 Details for every run are in [results/README.md](results/README.md); all figures are in
 [figures/](figures/).
 
@@ -60,7 +66,9 @@ scripts/             experiment entry points
   evaluate_test.py     finished runs on the 654-image test set
   make_figures.py      report figures from results/ (make figures)
   measure_speed.py     parameters, FLOPs and latency of the teacher and the students
+  qualitative.py       test images with the real depth, the teacher and the students
   export_hf.py         trained students -> .safetensors + model card for Hugging Face
+  example_figure.py    input + prediction of a shared model, for the usage example above
   fewlabel_v1.py       first version, kept for reproducibility
 notebooks/           colab_run.ipynb: long runs on a Colab GPU, with checkpoints on Drive
 hf/                  model card and standalone loader (modeling.py) for the exported students
@@ -123,6 +131,32 @@ Run all simply continues.
 ## Sharing the models
 
 The three models are on Hugging Face: [oguzkagangocmez/kd-depth-students](https://huggingface.co/oguzkagangocmez/kd-depth-students).
+
+### Use a model
+
+Needs `torch`, `torchvision`, `safetensors` and `huggingface_hub`; the variants are `small-1pct`,
+`small-5pct` and `small-25pct`.
+
+```python
+import importlib.util
+
+from huggingface_hub import hf_hub_download
+from PIL import Image
+
+REPO = "oguzkagangocmez/kd-depth-students"
+spec = importlib.util.spec_from_file_location("modeling", hf_hub_download(REPO, "modeling.py"))
+modeling = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(modeling)
+
+model = modeling.load_student("small-1pct", repo_id=REPO)
+depth = modeling.predict(model, Image.open("room.jpg"))   # HxW numpy array, meters
+```
+
+On NYU test image 131 (`python scripts/example_figure.py --data data/nyu_data`):
+
+![Input image and the depth predicted by small-1pct](figures/example.png)
+
+### Export
 
 `scripts/export_hf.py` takes the best-on-validation weights from `.done.pt` checkpoints and writes a
 folder for Hugging Face. The folder holds one `.safetensors` file per model, `config.json`, the
