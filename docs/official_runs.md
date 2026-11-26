@@ -48,8 +48,9 @@ notebooks with **different** `RUN_NAME`s can run at the same time on two L4 sess
 | `ema_1_5` | E4 at 1% and 5% with an average of the weights (`--ema 0.999`) and a 10× lower encoder learning rate (`--enc-lr 0.1`); validation only | 24k | 2 | 1.5 | done: worse (0.194 at 1%, 0.186 at 5%) |
 | `strongaug_1_5` | E4 at 1% and 5% with strong color perturbation and blur on the student's input for unlabeled images (`--strong-aug`); validation only | 24k | 2 | 1.5 | done: 0.176 at 1% (same), 0.164 at 5% (better) |
 | `ema_only_1_5` | as `ema_1_5` but with the normal encoder learning rate, to see EMA on its own; validation only | 24k | 2 | 1.5 | to run |
-| `strongaug_decay_5` | `gtmask_decay` at 5% with `--strong-aug`, seeds 0, 1, 2; validation only | 24k | 3 | 2.5 | to run |
-| `places_1_5` | E4 at 1% and 5% with ~16K extra unlabeled indoor images from Places365 (`--extra-pool`, made by `scripts/prepare_places.py`); validation only | 24k | 2 | 1.5 (+ teacher pass on the extra images) | to run |
+| `strongaug_decay_5` | `gtmask_decay` at 5% with `--strong-aug`, seeds 0, 1, 2; validation only | 24k | 3 | 2.5 | done: 0.159±0.001 (about −2% vs `gtmask_decay`) |
+| `places_1_5` | E4 at 1% and 5% with ~16K extra unlabeled indoor images from Places365 (`--extra-pool`, made by `scripts/prepare_places.py`); validation only | 24k | 2 | 1.5 (+ teacher pass on the extra images) | done: 0.177 at 1% (same), 0.164 at 5% (better) |
+| `places_decay_5` | `strongaug_decay_5` with the Places365 images of `places_1_5` (`--extra-pool`), seeds 0, 1, 2; validation only | 24k | 3 | 2.5 | to run |
 | `reg_1_aug` | E1 vs E4 at 1% with `--aug` (random zoom-in crop with depth divided by the zoom, color jitter) | 24k | 2 | 1 | done |
 | `reg_1_wd` | E1 vs E4 at 1% with weight decay 0.01 instead of 1e-4 | 24k | 2 | 1 | done |
 | `reg_1_drop` | E1 vs E4 at 1% with channel dropout 0.2 before the decoder head | 24k | 2 | 1 | done |
@@ -188,3 +189,13 @@ on unseen rooms. Baselines: 0.176 at 1% (`fix_1_short`) and 0.170 at 5% (`main_5
 is for non-commercial research and education and must not be redistributed, so neither the images
 nor the zip are in this repository, and models trained with them are not part of the Hugging Face
 release. Run after the test set and decided on validation only.
+
+**Outcome of `strongaug_decay_5` and `places_1_5`, and why `places_decay_5`:** with `--strong-aug`,
+`gtmask_decay` at 5% reached 0.159±0.001 over seeds 0–2 (last step 0.161±0.001), about 2% below
+its ~0.162 without it, with a smaller spread between seeds. `places_1_5` left 1% unchanged (0.177
+vs 0.176) and lowered 5% from 0.170 to 0.164 (one seed), the same gain as `strongaug_1_5`. As with
+strong perturbation, more unlabeled images do not help at 1%, where the student memorizes the 462
+labeled images. `places_decay_5` adds the Places365 images to the best 5% recipe so far
+(`strongaug_decay_5`) with three seeds; `--pool-gt` only uses real depth for NYU pool images that
+are labeled, so the Places365 images always count as unlabeled. Only a clear drop below 0.159
+would justify a larger Places365 subset from the training archive.
