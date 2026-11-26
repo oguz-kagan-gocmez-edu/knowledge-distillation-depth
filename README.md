@@ -152,9 +152,14 @@ model = modeling.load_student("small-1pct", repo_id=REPO)
 depth = modeling.predict(model, Image.open("room.jpg"))   # HxW numpy array, meters
 ```
 
-On NYU test image 131 (`python scripts/example_figure.py --data data/nyu_data`):
+On NYU test image 432, with the teacher for comparison (`python scripts/example_figure.py --data
+data/nyu_data`). The image was picked among those where the students do well (AbsRel 0.07–0.08,
+against 0.17–0.18 on average); the evenly spaced, unpicked images are in the qualitative figure
+above. The teacher gives relative depth only, so it is drawn after a per-image scale and shift to
+the real depth. The students get the layout and the metric scale right but are much smoother than
+the teacher: they work at 256×192 with a small decoder, the price of being 8× smaller and 5× faster.
 
-![Input image and the depth predicted by small-1pct](figures/example.png)
+![Input image, the teacher and the three students](figures/example.png)
 
 ### Export
 
